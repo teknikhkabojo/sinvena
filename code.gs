@@ -5,7 +5,7 @@
 const SHEET_ID      = "1iWTa93i4gWDZobBbY9DFga1EzR6vF-Ak-mHkoZmeH8o";
 const GDRIVE_FOLDER = "1ajqJv_QDWi03OuLGK5hoh-4nsSjzwR0H";
 const WAREHOUSE_EXT = "1XWaC-OaYFjwu1ZuqH_X6wabYMQdbVplBQJQw1M2rqHs";
-const GEMINI_KEY = "AIzaSyBhAQeD5nLBNQWXxGvaKAZll-QRD61vnx0";
+const GROQ_KEY = "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";
 const WAREHOUSE_TAB = "Mirroring data";
 
 const ss = SpreadsheetApp.openById(SHEET_ID);
@@ -529,34 +529,36 @@ User question: ${prompt}
 Answer in Indonesian:`;
   }
 
-  return aiGemini(fullPrompt);
+  return aiGroq(fullPrompt);
 }
 
-function aiGemini(prompt) {
+function aiGroq(prompt) {
   try {
-    const url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-lite:generateContent?key=" + GEMINI_KEY;
+    const url = "https://api.groq.com/openai/v1/chat/completions";
     const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1024
     };
     const options = {
       method: "post",
+      headers: { Authorization: "Bearer " + GROQ_KEY },
       contentType: "application/json",
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     };
     const res = UrlFetchApp.fetch(url, options);
     const json = JSON.parse(res.getContentText());
-    if (json.candidates && json.candidates[0] && json.candidates[0].content) {
-      const text = json.candidates[0].content.parts[0].text.trim();
-      // Try to extract JSON from response
+    if (json.choices && json.choices[0] && json.choices[0].message) {
+      const text = json.choices[0].message.content.trim();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try { return JSON.parse(jsonMatch[0]); } catch(e) {}
       }
       return { success: true, text };
     }
-    return { error: json.error?.message || "AI response empty" };
+    return { error: json.error?.message || "Empty response" };
   } catch(err) {
     return { error: err.message };
   }
