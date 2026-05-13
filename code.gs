@@ -625,7 +625,7 @@ function aiGroq(prompt) {
   try {
     const url = "https://api.groq.com/openai/v1/chat/completions";
     const payload = {
-      model: "llama-3.1-8b-instant",
+      model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
       max_tokens: 1024
