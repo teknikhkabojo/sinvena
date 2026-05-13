@@ -1476,6 +1476,20 @@ async function sendAiChat(){
 
 function buildContext(){
   let c=`=== DATA SISTEM INVENTARISASI ALAT (SINVENA) ===\n\n`;
+  c+=`PANDUAN PENGGUNAAN APLIKASI:\n`;
+  c+=`- Login: Masukkan username & password, klik Sign In.\n`;
+  c+=`- Dashboard: Menampilkan statistik equipment, WO trend, mekanik terbaik, parts, stock rendah.\n`;
+  c+=`- Equipment: Kelola alat. Klik 🔍 untuk detail & AI Diagnosa. Klik 📥 PDF untuk unduh laporan. Klik ✏️ edit, 🗑️ hapus.\n`;
+  c+=`- Work Orders: Kelola perbaikan. Filter status, tanggal, cari. Klik 🔍 detail, 🔄 ubah status, ✅ konfirmasi selesai.\n`;
+  c+=`  Cara buat WO: klik tombol Add (➕) → pilih equipment, aktivitas, prioritas → isi deskripsi (bisa pakai ✨ AI Suggest) → pilih mekanik & kolaborator → isi needed parts → Save.\n`;
+  c+=`- Spare Parts: Kelola spare part. Klik 🔍 Detail, ✏️ edit, 🗑️ hapus.\n`;
+  c+=`- Warehouse: Lihat stock material (read-only mirror dari external sheet).\n`;
+  c+=`- History: Riwayat semua aktivitas work order.\n`;
+  c+=`- Reports: Generate laporan WO/Equipment/History/Warehouse. Preview, export PDF atau Excel.\n`;
+  c+=`- Users (manager only): Kelola user.\n`;
+  c+=`- AI Chat: Tanya apa saja tentang data inventory atau cara pakai aplikasi.\n`;
+  c+=`- Tombol Add (➕): Menambah data sesuai halaman aktif (Equipment/WO/Parts/Users).\n`;
+  c+=`- Tombol Refresh (🔄): Mereload semua data.\n\n`;
   // Equipment
   c+=`DAFTAR EQUIPMENT (${EQ.length}):\n`;
   if(EQ.length){EQ.forEach(e=>{c+=`- ${e.Name} (${e.Type||"-"}) | Brand: ${e.Brand||"-"} | Model: ${e.Model||"-"} | Serial: ${e.SerialNo||"-"} | Status: ${e.Status} | Lokasi: ${e.Location||"-"}\n`})}
