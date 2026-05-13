@@ -1466,12 +1466,34 @@ async function sendAiChat(){
   box.scrollTop=box.scrollHeight;
   box.innerHTML+=`<div class="ai-msg ai-loading" style="color:var(--sub);font-size:12px;padding:8px 14px">🧠 Mengetik...</div>`;
   box.scrollTop=box.scrollHeight;
-  const ctx=`Equipment count: ${EQ.length}, Work Orders: ${WO.length}, Parts: ${PT.length}, Warehouse items: ${WH.length}`;
+  const ctx = buildContext();
   const r=await AI(msg,"chat",ctx);
   const loading=box.querySelector(".ai-loading");
   if(loading) loading.remove();
   box.innerHTML+=`<div class="ai-msg ai-assistant" style="background:var(--card);padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;box-shadow:var(--sh);border:1px solid var(--bdr);max-width:90%">${r.text||r.error||"Maaf, tidak ada jawaban."}</div>`;
   box.scrollTop=box.scrollHeight;
+}
+
+function buildContext(){
+  let c=`=== DATA SISTEM INVENTARISASI ALAT (SINVENA) ===\n\n`;
+  // Equipment
+  c+=`DAFTAR EQUIPMENT (${EQ.length}):\n`;
+  if(EQ.length){EQ.forEach(e=>{c+=`- ${e.Name} (${e.Type||"-"}) | Brand: ${e.Brand||"-"} | Model: ${e.Model||"-"} | Serial: ${e.SerialNo||"-"} | Status: ${e.Status} | Lokasi: ${e.Location||"-"}\n`})}
+  else c+=`(belum ada data)\n`;
+  // Parts
+  c+=`\nDAFTAR SPARE PARTS (${PT.length}):\n`;
+  if(PT.length){PT.forEach(p=>{c+=`- ${p.Name} | PartNo: ${p.PartNo||"-"} | Unit: ${p.Unit} | MinStock: ${p.MinStock}\n`})}
+  else c+=`(belum ada data)\n`;
+  // Work Orders
+  c+=`\nWORK ORDERS (${WO.length}):\n`;
+  const woRecent=[...WO].reverse().slice(0,10);
+  if(woRecent.length){woRecent.forEach(w=>{c+=`- ${w.WOID} | Alat: ${en(w.EquipmentID)} | Mekanik: ${w.Mechanic} | Aktivitas: ${w.ActivityType} | Status: ${w.Status} | Prioritas: ${w.Priority||"Normal"}\n`})}
+  else c+=`(belum ada data)\n`;
+  // Warehouse
+  c+=`\nWAREHOUSE STOCK (${WH.length}):\n`;
+  if(WH.length){WH.slice(0,15).forEach(w=>{c+=`- ${w.Material||"-"}: ${w.TotalStock||0} ${w.Unit||""}\n`})}
+  else c+=`(belum ada data)\n`;
+  return c;
 }
 
 // ══════════════════════════════════════════════════════════════
