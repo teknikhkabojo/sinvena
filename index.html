@@ -488,8 +488,6 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
 <!-- BOTTOM NAV -->
 <div id="bottomNav">
   <button class="bnav add" onclick="onAdd()"><span class="bi">➕</span>Add</button>
-  <button class="bnav edi" onclick="onEdit()"><span class="bi">✏️</span>Edit</button>
-  <button class="bnav del" onclick="onDel()"><span class="bi">🗑️</span>Delete</button>
   <button class="bnav ref" onclick="onRefresh()"><span class="bi">🔄</span>Refresh</button>
   <button class="bnav" style="color:var(--pur)" onclick="openAiChat()"><span class="bi">🤖</span>AI</button>
 </div>
@@ -1715,8 +1713,6 @@ function onAdd(){
   if(map[curPage]) map[curPage]();
   else toast("Select Equipment, Work Orders, Parts or Users tab","warn");
 }
-function onEdit(){toast("Tap ✏️ on a row to edit","warn")}
-function onDel(){toast("Tap 🗑️ on a row to delete","warn")}
 async function onRefresh(){toast("🔄 Refreshing…","info"); await loadAll(); toast("✅ Refreshed!")}
 
 // MODALS
