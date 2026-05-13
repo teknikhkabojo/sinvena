@@ -981,6 +981,18 @@ async function submitEq(){
   else toast("Error: "+r.error,"err");
 }
 
+async function extractPdfText(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(s=>s.str).join(" ")+"\n";
+  }
+  return text;
+}
+
 async function uploadManualPdf(input){
   const file=input.files[0]; if(!file) return;
   try{
