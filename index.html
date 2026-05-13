@@ -926,7 +926,7 @@ function renderEQ(){
           <div class="exp-f"><label>Status</label><p>${sb(e.Status)}</p></div>
           <div class="exp-f full"><label>Specifications</label><p>${e.Specs||"—"}</p></div>
         </div>
-        ${e.ManualText?`<div class="exp-f full"><label>📖 Manual Book</label><p style="font-size:12px;max-height:100px;overflow-y:auto">${e.ManualText.slice(0,500)}${e.ManualText.length>500?"...":""}</p></div>`:""}
+        ${e.ManualText?`<div class="exp-f full" style="max-height:200px;overflow-y:auto"><label>📖 Manual Book</label><p style="font-size:12px;white-space:pre-wrap;word-break:keep-all">${e.ManualText}</p></div>`:""}
         <button class="btn btn-pur btn-sm" onclick="aiDiagnose('${e.EquipmentID}')" type="button" style="margin:12px 0">🔍 AI Diagnosa (gabung Manual Book)</button>
         <span class="slbl">📷 Equipment Photos</span>
         <div class="img-row">${imgT(e.ImgFront,"Front")}${imgT(e.ImgSide,"Side")}${imgT(e.ImgIso,"Isometric")}</div>
@@ -1478,7 +1478,7 @@ async function runAiDiagnose(){
   el.innerHTML=`<div class="spin">🔍 Menganalisa...</div>`;
   const eq=EQ.find(x=>x.EquipmentID===_diagEqId);
   const manual=eq?.ManualText||"";
-  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,8000)}` : "";
+  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,15000)}` : "";
   // Get work order history for this equipment
   const woHist=WO.filter(w=>w.EquipmentID===_diagEqId).reverse().slice(0,10);
   const histInfo=woHist.length ? `\n\nRIWAYAT WORK ORDER (${woHist.length} terakhir):\n${woHist.map(w=>`- ${w.WOID}: ${w.ActivityType} | ${w.Status} | Mekanik: ${w.Mechanic} | Tgl: ${fd(w.Date)}`).join("\n")}` : "";
