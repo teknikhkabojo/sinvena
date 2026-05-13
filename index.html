@@ -516,8 +516,11 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
             📄 + Tambah PDF Manual
             <input type="file" accept=".pdf" class="cam-file" onchange="uploadManualPdf(this)"/>
           </label>
-          
+          <button class="btn btn-pur btn-sm" onclick="summarizeExistingText()" type="button">🧠 Ringkaskan Manual</button>
         </div>
+        <div id="manualPdfList" style="margin-top:8px"></div>
+        <p style="font-size:10px;color:var(--sub);margin-top:4px">💡 File PDF hanya dibaca teksnya, tidak disimpan.</p>
+      </div>
         <div id="manualPdfList" style="margin-top:8px"></div>
         <p style="font-size:10px;color:var(--sub);margin-top:4px">💡 File PDF hanya dibaca teksnya, tidak disimpan.</p>
       </div>
@@ -1000,6 +1003,13 @@ async function summarizeText(text,fileName){
     sv("eq-manual",(gv("eq-manual")?gv("eq-manual")+"\n\n--- Ringkasan "+fileName+" ---\n":"")+r.text);
     toast("✅ Ringkasan "+fileName+" selesai!","ok");
   } else {sv("eq-manual",(gv("eq-manual")?gv("eq-manual")+"\n\n--- "+fileName+" ---\n":"")+text);toast("⚠️ Gagal meringkas, teks asli disimpan","warn")}
+}
+
+async function summarizeExistingText(){
+  const text=gv("eq-manual");
+  if(!text){toast("Tidak ada teks untuk diringkas","warn");return}
+  if(text.length<50){toast("Teks terlalu pendek untuk diringkas","warn");return}
+  await summarizeText(text,"Manual saat ini");
 }
 
 async function uploadManualPdf(input){
