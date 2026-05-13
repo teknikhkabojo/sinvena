@@ -508,17 +508,17 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
       <div class="fg"><label>Location</label><input id="eq-loc"/></div>
       <div class="fg"><label>Status</label><select id="eq-status"><option>Active</option><option>Maintenance</option><option>Waiting for Sparepart</option><option>Retired</option></select></div>
       <div class="fg full"><label>Specifications</label><textarea id="eq-specs"></textarea></div>
-      <div class="fg full"><label>📖 Manual Book / Panduan</label><textarea id="eq-manual" placeholder="Tempelkan teks manual book atau panduan equipment di sini. AI akan membaca ini saat melakukan diagnosis." style="min-height:100px"></textarea>
+      <div class="fg full"><label>📖 Manual Book / Panduan</label><textarea id="eq-manual" placeholder="Teks manual akan otomatis terisi dari upload PDF. Bisa juga diketik manual." style="min-height:80px"></textarea>
         <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
           <label class="ph-btn" style="cursor:pointer;background:var(--org)">
-            📄 Upload PDF
+            📄 + Tambah PDF Manual
             <input type="file" accept=".pdf" class="cam-file" onchange="uploadManualPdf(this)"/>
           </label>
-          <span id="manualPdfStatus" style="font-size:11px;color:var(--sub)">Belum ada file PDF</span>
-          <button class="ph-btn remove" id="manualPdfRemove" style="display:none" onclick="removeManualPdf()">🗑 Hapus PDF</button>
+          <button class="btn btn-ok btn-sm" onclick="extractAllPdfs()">📖 Extract Semua PDF</button>
         </div>
+        <div id="manualPdfList" style="margin-top:8px"></div>
       </div>
-      <input type="hidden" id="eq-manualFileId"/>
+      <input type="hidden" id="eq-manualFileId"/> <!-- comma-separated file IDs -->
     </div>
     <div class="sep"></div>
     <span class="slbl">📷 Equipment Photos</span>
@@ -679,7 +679,7 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
 <script>
 // ══════════════════════════════════════════════════════════════
 // CONFIG
-const API = "https://script.google.com/macros/s/AKfycbzGfrdaQ1c4LolV0Y7mycg4YuHHqeJtCCQiOgsr-dsS51I3XYQl1jwx-Ej63nACMQEW/exec";
+const API = "https://script.google.com/macros/s/AKfycbySu1isIfqPGpUuizCoctqBrIX0Jdd7ukh_Q8r7BCXOiYLJMNU3gt2jx4c9kL0RYH56/exec";
 
 // ══════════════════════════════════════════════════════════════
 // UTILS
@@ -961,8 +961,8 @@ function eqEdit(e){
   ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual"]
     .forEach((id,i)=>sv(id,[e.EquipmentID,e.Name,e.Brand,e.Model,e.SerialNo,e.Year,e.Location,e.Specs,e.ManualText][i]));
   sv("eq-type",e.Type); sv("eq-status",e.Status); sv("eq-manualFileId",e.ManualFileId||"");
-  if(e.ManualFileId){$("manualPdfStatus").innerHTML="✅ PDF terpasang";$("manualPdfStatus").style.color="var(--ok)";$("manualPdfRemove").style.display="inline-flex"}
-  else{$("manualPdfStatus").innerHTML="Belum ada file PDF";$("manualPdfStatus").style.color="var(--sub)";$("manualPdfRemove").style.display="none"}
+  _manualPdfIds=(e.ManualFileId||"").split(",").filter(Boolean).map(id=>({fileId:id,name:"PDF"+(id.slice(0,8))}));
+  renderManualPdfList();
   photos.eq={front:{url:e.ImgFront||""},side:{url:e.ImgSide||""},iso:{url:e.ImgIso||""}};
   renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]);
   $("mEqT").textContent="✏️ Edit Equipment"; om("mEq");
@@ -981,6 +981,19 @@ async function submitEq(){
   else toast("Error: "+r.error,"err");
 }
 
+let _manualPdfIds=[];
+
+function renderManualPdfList(){
+  const el=$("manualPdfList");
+  if(!_manualPdfIds.length){el.innerHTML=`<span style="font-size:11px;color:var(--sub)">Belum ada file PDF</span>`;return}
+  el.innerHTML=_manualPdfIds.map((f,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
+      <span style="color:var(--a)">📄</span>
+      <span style="flex:1">${f.name||"PDF "+ (i+1)}</span>
+      <button class="btn btn-e btn-sm" onclick="removePdf(${i})">✕</button>
+    </div>`).join("");
+}
+
 async function uploadManualPdf(input){
   const file=input.files[0]; if(!file) return;
   toast("📄 Uploading PDF...","info");
@@ -989,26 +1002,39 @@ async function uploadManualPdf(input){
     const base64=e.target.result.split(",")[1];
     const r=await POST("uploadManual",{base64,mimeType:file.type,filename:file.name});
     if(r.success){
-      sv("eq-manualFileId",r.fileId);
-      $("manualPdfStatus").innerHTML=`✅ ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
-      $("manualPdfStatus").style.color="var(--ok)";
-      $("manualPdfRemove").style.display="inline-flex";
-      toast("✅ PDF terupload! Klik Save untuk menyimpan.","ok");
-      // Auto-extract text
+      _manualPdfIds.push({fileId:r.fileId,name:file.name});
+      sv("eq-manualFileId",_manualPdfIds.map(x=>x.fileId).join(","));
+      renderManualPdfList();
+      // Auto-extract
       const ext=await POST("extractManualText",{fileId:r.fileId});
-      if(ext.success){sv("eq-manual",ext.text);toast("📄 Teks manual berhasil diekstrak!","ok")}
-      else toast("⚠️ "+ext.error,"warn");
+      if(ext.success){
+        const existing=gv("eq-manual");
+        sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+ext.text);
+        toast("✅ Teks dari "+file.name+" berhasil diekstrak!","ok");
+      } else toast("⚠️ Ekstrak gagal: "+ext.error,"warn");
     }else toast("Error: "+r.error,"err");
     input.value="";
   };
   reader.readAsDataURL(file);
 }
 
-function removeManualPdf(){
-  sv("eq-manualFileId",""); sv("eq-manual","");
-  $("manualPdfStatus").innerHTML="Belum ada file PDF";
-  $("manualPdfStatus").style.color="var(--sub)";
-  $("manualPdfRemove").style.display="none";
+async function extractAllPdfs(){
+  const ids=_manualPdfIds.map(x=>x.fileId).filter(Boolean);
+  if(!ids.length){toast("Tidak ada PDF untuk diekstrak","warn");return}
+  toast("📖 Mengekstrak semua PDF...","info");
+  let allText="";
+  for(const f of _manualPdfIds){
+    const ext=await POST("extractManualText",{fileId:f.fileId});
+    if(ext.success) allText+=(allText?"\n\n--- "+f.name+" ---\n":"")+ext.text;
+  }
+  if(allText){sv("eq-manual",allText);toast("✅ Semua PDF berhasil diekstrak!","ok")}
+  else toast("⚠️ Gagal ekstrak","err");
+}
+
+function removePdf(idx){
+  _manualPdfIds.splice(idx,1);
+  sv("eq-manualFileId",_manualPdfIds.map(x=>x.fileId).join(","));
+  renderManualPdfList();
 }
 
 async function dlEqPDF(eqId){
@@ -1466,19 +1492,27 @@ async function runAiDiagnose(){
   el.innerHTML=`<div class="spin">🔍 Menganalisa...</div>`;
   const eq=EQ.find(x=>x.EquipmentID===_diagEqId);
   const manual=eq?.ManualText||"";
-  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,3000)}` : "";
-  const context=`Name: ${_diagEqName}, Type: ${eq?.Type||""}, Specs: ${eq?.Specs||""}${manualInfo}`;
-  const r=await AI(symptoms,"diagnose",context);
+  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,5000)}` : "";
+  // Get work order history for this equipment
+  const woHist=WO.filter(w=>w.EquipmentID===_diagEqId).reverse().slice(0,10);
+  const histInfo=woHist.length ? `\n\nRIWAYAT WORK ORDER (${woHist.length} terakhir):\n${woHist.map(w=>`- ${w.WOID}: ${w.ActivityType} | ${w.Status} | Mekanik: ${w.Mechanic} | Tgl: ${fd(w.Date)}`).join("\n")}` : "";
+  // Get linked parts
+  const linkedParts=PT.filter(p=>p.EquipmentID===_diagEqId||p.EquipmentID==="General");
+  const partsInfo=linkedParts.length ? `\n\nSPARE PARTS TERKAIT:\n${linkedParts.map(p=>`- ${p.Name} (${p.PartNo||"-"}) | Stock Min: ${p.MinStock}`).join("\n")}` : "";
+  const context=`Nama: ${_diagEqName}, Type: ${eq?.Type||""}, Brand: ${eq?.Brand||""}, Model: ${eq?.Model||""}, Serial: ${eq?.SerialNo||""}, Tahun: ${eq?.Year||""}, Lokasi: ${eq?.Location||""}, Spesifikasi: ${eq?.Specs||""}${manualInfo}${histInfo}${partsInfo}`;
+  const r=await AI(symptoms,"diagnoseFull",context);
   if(r.error){el.innerHTML=`<div class="empty">Error: ${r.error}</div>`;return}
   el.innerHTML=`
     <div class="card" style="border:1px solid var(--pur);margin-bottom:10px">
       <div class="cb">
         <p style="font-size:13px;font-weight:700;color:var(--pur);margin-bottom:8px">🔍 Diagnosis:</p>
         <p style="font-size:13px;margin-bottom:12px">${r.diagnosis||r.text||"—"}</p>
-        ${r.possibleCauses?`<p style="font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Kemungkinan Penyebab:</p>
+        ${r.possibleCauses?`<p style="font-size:12px;font-weight:700;color:var(--err);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⚠️ Kemungkinan Penyebab:</p>
         <ul style="font-size:12px;padding-left:18px;margin-bottom:10px">${r.possibleCauses.map(c=>`<li style="margin-bottom:3px">${c}</li>`).join("")}</ul>`:""}
-        ${r.recommendedActions?`<p style="font-size:12px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Tindakan yang Disarankan:</p>
-        <ul style="font-size:12px;padding-left:18px">${r.recommendedActions.map(a=>`<li style="margin-bottom:3px">${a}</li>`).join("")}</ul>`:""}
+        ${r.recommendedActions?`<p style="font-size:12px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">✅ Tindakan yang Disarankan:</p>
+        <ul style="font-size:12px;padding-left:18px;margin-bottom:10px">${r.recommendedActions.map(a=>`<li style="margin-bottom:3px">${a}</li>`).join("")}</ul>`:""}
+        ${r.conclusion?`<div style="background:var(--alight);padding:12px;border-radius:var(--rs);margin-bottom:10px;border:1px solid var(--bdr)"><p style="font-size:12px;font-weight:700;color:var(--a);margin-bottom:4px">📋 Kesimpulan:</p><p style="font-size:12px">${r.conclusion}</p></div>`:""}
+        ${r.references?`<p style="font-size:11px;font-weight:600;color:var(--sub);margin-bottom:4px">📚 Referensi yang digunakan:</p><ul style="font-size:11px;padding-left:18px;color:var(--sub)">${r.references.map(ref=>`<li style="margin-bottom:2px">${ref}</li>`).join("")}</ul>`:""}
       </div>
     </div>`;
 }
@@ -1717,7 +1751,7 @@ function onAdd(){
   editId=null; collabs=[]; photos={eq:{},pt:{},woparts:{},user:{}};
   const map={
     equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual","eq-manualFileId"].forEach(id=>sv(id,""));
-      $("manualPdfStatus").innerHTML="Belum ada file PDF";$("manualPdfStatus").style.color="var(--sub)";$("manualPdfRemove").style.display="none";
+      _manualPdfIds=[];renderManualPdfList();
       renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]); $("mEqT").textContent="➕ Add Equipment"; om("mEq"); },
     workorder:()=>{ ["wo-id","wo-mech","wo-desc","wo-parts","wo-partsDesc"].forEach(id=>sv(id,""));
       sv("wo-mech",S?.fullName||S?.username||""); collabs=[]; renderTags();

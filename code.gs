@@ -542,15 +542,18 @@ Equipment: ${context}
 Activity type: ${prompt}
 Format: respond with JSON like {"description":"...","priority":"..."}`;
 
-  } else if (mode === "diagnose") {
-    fullPrompt = `You are an equipment diagnostic expert. Based on the following information, provide a diagnosis and recommended actions in Indonesian.
+  } else if (mode === "diagnose" || mode === "diagnoseFull") {
+    fullPrompt = `Kamu adalah ahli diagnosa equipment profesional. Berdasarkan informasi berikut, berikan diagnosis dan rekomendasi tindakan yang akurat dalam Bahasa Indonesia.
 
-Equipment: ${context}
-Symptoms/Issue: ${prompt}
+DATA EQUIPMENT:
+${context}
 
-Jika tersedia manual book / buku panduan equipment, gunakan informasi tersebut sebagai referensi untuk diagnosis yang lebih akurat.
+GEJALA / MASALAH:
+${prompt}
 
-Provide response as JSON: {"diagnosis":"...","possibleCauses":["...","..."],"recommendedActions":["...","..."]}`;
+${mode === "diagnoseFull" ? "Gunakan SEMUA referensi yang tersedia: manual book, riwayat work order, data parts, dan spesifikasi equipment untuk memberikan analisis yang paling akurat." : "Jika tersedia manual book, gunakan sebagai referensi."}
+
+Berikan response dalam format JSON: {"diagnosis":"...","possibleCauses":["...","..."],"recommendedActions":["...","..."],"conclusion":"...","references":["...","..."]}`;
 
   } else {
     // chat mode
