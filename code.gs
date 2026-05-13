@@ -210,7 +210,7 @@ function addEquipment(d) {
   const id = genId("EQ");
   ss.getSheetByName(SH.equipment).appendRow([
     id, d.name, d.type, d.brand, d.model, d.serialNo, d.year,
-    d.status||"Active", d.location||"", d.specs||"",
+    d.status||"Active", d.location||"", d.specs||"", d.manualText||"",
     d.imgFront||"", d.imgSide||"", d.imgIso||"", nowStr()
   ]);
   return { success: true, id };
@@ -220,7 +220,7 @@ function editEquipment(d) {
   const f = findRow(SH.equipment, "EquipmentID", d.id);
   if (!f) return { error: "Not found" };
   const map = { Name:d.name, Type:d.type, Brand:d.brand, Model:d.model, SerialNo:d.serialNo,
-    Year:d.year, Status:d.status, Location:d.location, Specs:d.specs,
+    Year:d.year, Status:d.status, Location:d.location, Specs:d.specs, ManualText:d.manualText,
     ImgFront:d.imgFront, ImgSide:d.imgSide, ImgIso:d.imgIso };
   Object.entries(map).forEach(([k,v]) => {
     if (v !== undefined) setCell(SH.equipment, k, v, d.id, "EquipmentID");
@@ -514,6 +514,8 @@ Format: respond with JSON like {"description":"...","priority":"..."}`;
 Equipment: ${context}
 Symptoms/Issue: ${prompt}
 
+Jika tersedia manual book / buku panduan equipment, gunakan informasi tersebut sebagai referensi untuk diagnosis yang lebih akurat.
+
 Provide response as JSON: {"diagnosis":"...","possibleCauses":["...","..."],"recommendedActions":["...","..."]}`;
 
   } else {
@@ -589,7 +591,7 @@ function aiGroq(prompt) {
 function setupSheets() {
   const headers = {
     Users      : ["Username","Password","FullName","Role","Active","Photo","CreatedAt"],
-    Equipment  : ["EquipmentID","Name","Type","Brand","Model","SerialNo","Year","Status","Location","Specs","ImgFront","ImgSide","ImgIso","CreatedAt"],
+    Equipment  : ["EquipmentID","Name","Type","Brand","Model","SerialNo","Year","Status","Location","Specs","ManualText","ImgFront","ImgSide","ImgIso","CreatedAt"],
     SpareParts : ["PartID","Name","PartNo","EquipmentID","Unit","MinStock","Specs","ImgFront","ImgSide","ImgIso","CreatedAt"],
     WorkOrders : ["WOID","Date","EquipmentID","Mechanic","Collaborators","ActivityType","Description","Status","Priority","NeededParts","NeededPartsDesc","NeededPartsImg","StartTime","DoneTime","ConfirmedBy","ConfirmedAt"],
     PartsUsed  : ["RecordID","WOID","PartID","QtyUsed","Date"],

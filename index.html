@@ -508,6 +508,7 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
       <div class="fg"><label>Location</label><input id="eq-loc"/></div>
       <div class="fg"><label>Status</label><select id="eq-status"><option>Active</option><option>Maintenance</option><option>Waiting for Sparepart</option><option>Retired</option></select></div>
       <div class="fg full"><label>Specifications</label><textarea id="eq-specs"></textarea></div>
+      <div class="fg full"><label>📖 Manual Book / Panduan</label><textarea id="eq-manual" placeholder="Tempelkan teks manual book atau panduan equipment di sini. AI akan membaca ini saat melakukan diagnosis." style="min-height:100px"></textarea></div>
     </div>
     <div class="sep"></div>
     <span class="slbl">📷 Equipment Photos</span>
@@ -668,7 +669,7 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
 <script>
 // ══════════════════════════════════════════════════════════════
 // CONFIG
-const API = "https://script.google.com/macros/s/AKfycbyUbHaTCP7Vh9aHlXqYUnosHjWqWNVSNUiZqcTKXad-ZcvVv0kk_vXMWG8tpxyfPKDh/exec";
+const API = "https://script.google.com/macros/s/AKfycbwAj3lLaXrXxAa7nDFvvFxMwAZ-abak335zK0beNUCHQt5k_EZZN__E4sYSiROytoUT/exec";
 
 // ══════════════════════════════════════════════════════════════
 // UTILS
@@ -910,7 +911,8 @@ function renderEQ(){
           <div class="exp-f"><label>Status</label><p>${sb(e.Status)}</p></div>
           <div class="exp-f full"><label>Specifications</label><p>${e.Specs||"—"}</p></div>
         </div>
-        <button class="btn btn-pur btn-sm" onclick="aiDiagnose('${e.EquipmentID}')" type="button" style="margin-bottom:12px">🔍 AI Diagnosa</button>
+        ${e.ManualText?`<div class="exp-f full"><label>📖 Manual Book</label><p style="font-size:12px;max-height:100px;overflow-y:auto">${e.ManualText.slice(0,500)}${e.ManualText.length>500?"...":""}</p></div>`:""}
+        <button class="btn btn-pur btn-sm" onclick="aiDiagnose('${e.EquipmentID}')" type="button" style="margin:12px 0">🔍 AI Diagnosa (gabung Manual Book)</button>
         <span class="slbl">📷 Equipment Photos</span>
         <div class="img-row">${imgT(e.ImgFront,"Front")}${imgT(e.ImgSide,"Side")}${imgT(e.ImgIso,"Isometric")}</div>
         <div class="sep"></div>
@@ -946,8 +948,8 @@ function buildEqPgn(page, pages, total){
 
 function eqEdit(e){
   editId=e.EquipmentID;
-  ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs"]
-    .forEach((id,i)=>sv(id,[e.EquipmentID,e.Name,e.Brand,e.Model,e.SerialNo,e.Year,e.Location,e.Specs][i]));
+  ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual"]
+    .forEach((id,i)=>sv(id,[e.EquipmentID,e.Name,e.Brand,e.Model,e.SerialNo,e.Year,e.Location,e.Specs,e.ManualText][i]));
   sv("eq-type",e.Type); sv("eq-status",e.Status);
   photos.eq={front:{url:e.ImgFront||""},side:{url:e.ImgSide||""},iso:{url:e.ImgIso||""}};
   renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]);
@@ -956,7 +958,7 @@ function eqEdit(e){
 
 async function submitEq(){
   const d={name:gv("eq-name"),type:gv("eq-type"),brand:gv("eq-brand"),model:gv("eq-model"),
-    serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs")};
+    serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs"),manualText:gv("eq-manual")};
   if(!d.name){toast("Equipment name required","warn");return}
   toast("Saving…","info");
   d.imgFront=await uploadSlot(photos.eq,"front")||"";
@@ -1434,7 +1436,10 @@ async function runAiDiagnose(){
   if(!symptoms){toast("Masukkan gejala kerusakan","warn");return}
   const el=$("aiDiagResult");
   el.innerHTML=`<div class="spin">🔍 Menganalisa...</div>`;
-  const context=`Name: ${_diagEqName}, Type: ${EQ.find(x=>x.EquipmentID===_diagEqId)?.Type||""}, Specs: ${EQ.find(x=>x.EquipmentID===_diagEqId)?.Specs||""}`;
+  const eq=EQ.find(x=>x.EquipmentID===_diagEqId);
+  const manual=eq?.ManualText||"";
+  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,3000)}` : "";
+  const context=`Name: ${_diagEqName}, Type: ${eq?.Type||""}, Specs: ${eq?.Specs||""}${manualInfo}`;
   const r=await AI(symptoms,"diagnose",context);
   if(r.error){el.innerHTML=`<div class="empty">Error: ${r.error}</div>`;return}
   el.innerHTML=`
@@ -1683,7 +1688,7 @@ async function cfmDel(){
 function onAdd(){
   editId=null; collabs=[]; photos={eq:{},pt:{},woparts:{},user:{}};
   const map={
-    equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs"].forEach(id=>sv(id,""));
+    equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual"].forEach(id=>sv(id,""));
       renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]); $("mEqT").textContent="➕ Add Equipment"; om("mEq"); },
     workorder:()=>{ ["wo-id","wo-mech","wo-desc","wo-parts","wo-partsDesc"].forEach(id=>sv(id,""));
       sv("wo-mech",S?.fullName||S?.username||""); collabs=[]; renderTags();
