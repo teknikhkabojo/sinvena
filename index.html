@@ -1011,6 +1011,56 @@ function removeManualPdf(){
   $("manualPdfRemove").style.display="none";
 }
 
+async function dlEqPDF(eqId){
+  const e=EQ.find(x=>x.EquipmentID===eqId); if(!e) return;
+  const parts=PT.filter(p=>p.EquipmentID===eqId);
+  const wos=WO.filter(w=>w.EquipmentID===eqId);
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"landscape"});
+  let y=15;
+  doc.setFontSize(18);doc.setFont(undefined,"bold");doc.text("Equipment Report",14,y);y+=8;
+  doc.setFontSize(9);doc.setFont(undefined,"normal");doc.text(`Generated: ${new Date().toLocaleString()}`,14,y);y+=10;
+  doc.autoTable({startY:y,head:[["Field","Value"]],
+    body:[["Name",e.Name],["Type",e.Type],["Brand",e.Brand||""],["Model",e.Model||""],["Serial",e.SerialNo||""],["Year",e.Year||""],["Location",e.Location||""],["Status",e.Status],["Specs",e.Specs||""]],
+    styles:{fontSize:8},headStyles:{fillColor:[15,23,42]},columnStyles:{0:{fontStyle:"bold",cellWidth:40}}});
+  y=doc.lastAutoTable.finalY+8;
+  const imgs=[{url:e.ImgFront,label:"Front"},{url:e.ImgSide,label:"Side"},{url:e.ImgIso,label:"Isometric"}];
+  const hasImg=imgs.some(i=>i.url&&i.url!=="undefined"&&i.url!=="null"&&i.url!=="");
+  if(hasImg){
+    doc.setFontSize(10);doc.setFont(undefined,"bold");doc.text("Equipment Photos",14,y);y+=6;
+    const imgX=[14,84,154];
+    for(let i=0;i<imgs.length;i++){
+      if(imgs[i].url&&imgs[i].url!=="undefined"&&imgs[i].url!=="null"&&imgs[i].url!==""){
+        try{const dUrl=await imgToDataUrl(fixDriveUrl(imgs[i].url));if(dUrl)doc.addImage(dUrl,"JPEG",imgX[i],y,60,45)}catch(e){}
+      }
+    }
+    y+=52;
+  }
+  if(parts.length){
+    if(y>180){doc.addPage();y=15}
+    doc.setFontSize(10);doc.setFont(undefined,"bold");doc.text("Spare Parts",14,y);y+=5;
+    doc.autoTable({startY:y,head:[["Name","Part No.","Unit","Min Stock","Specs"]],
+      body:parts.map(p=>[p.Name,p.PartNo||"",p.Unit,p.MinStock,p.Specs||""]),
+      styles:{fontSize:7},headStyles:{fillColor:[15,23,42]}});
+    y=doc.lastAutoTable.finalY+8;
+  }
+  if(wos.length){
+    if(y>180){doc.addPage();y=15}
+    doc.setFontSize(10);doc.setFont(undefined,"bold");doc.text("Work Order History",14,y);y+=5;
+    doc.autoTable({startY:y,head:[["WO ID","Date","Mechanic","Activity","Status","Start","Done"]],
+      body:wos.map(w=>[w.WOID,fd(w.Date),w.Mechanic,w.ActivityType,w.Status,fd(w.StartTime),fd(w.DoneTime)]),
+      styles:{fontSize:7},headStyles:{fillColor:[15,23,42]}});
+  }
+  doc.save(`Equipment_${e.Name.replace(/\s+/g,"_")}.pdf`);
+}
+
+function imgToDataUrl(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();img.crossOrigin="anonymous";
+    img.onload=()=>{try{const c=document.createElement("canvas");c.width=img.width;c.height=img.height;const ctx=c.getContext("2d");ctx.drawImage(img,0,0);resolve(c.toDataURL("image/jpeg",0.85))}catch(e){resolve(null)}};
+    img.onerror=()=>resolve(null);img.src=url;
+  });
+}
+
 // ══════════════════════════════════════════════════════════════
 // WORK ORDERS
 async function loadWO(){
