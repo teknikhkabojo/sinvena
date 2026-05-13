@@ -66,6 +66,8 @@ function doPost(e) {
     if (a === "updateWOStatus")    return jsonRes(updateWOStatus(p.data));
     if (a === "confirmWODone")     return jsonRes(confirmWODone(p.data));
     if (a === "addPartsUsed")      return jsonRes(addPartsUsed(p.data));
+    if (a === "uploadManual")      return jsonRes(uploadManual(p.data));
+    if (a === "extractManualText") return jsonRes(extractManualText(p.data));
     if (a === "ai")                return jsonRes(aiHandler(p.data));
     return jsonRes({ error: "Unknown POST action" });
   } catch(err) { return jsonRes({ error: err.message }); }
@@ -161,6 +163,38 @@ function extractFileId(url) {
   return null;
 }
 
+// ── MANUAL PDF UPLOAD ─────────────────────────────────────────
+function uploadManual(d) {
+  try {
+    const folder  = DriveApp.getFolderById(GDRIVE_FOLDER);
+    const decoded = Utilities.base64Decode(d.base64);
+    const blob    = Utilities.newBlob(decoded, d.mimeType || "application/pdf", d.filename || "manual.pdf");
+    const file    = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return { success: true, fileId: file.getId(), url: file.getUrl() };
+  } catch(err) {
+    return { error: "Upload failed: " + err.message };
+  }
+}
+
+function extractManualText(d) {
+  try {
+    const fileId = d.fileId;
+    if (!fileId) return { error: "No fileId" };
+    // Convert PDF to Google Doc temporarily using Drive API
+    const docFile = Drive.Files.copy(
+      { title: "_temp_manual_extract", mimeType: "application/vnd.google-apps.document" },
+      fileId
+    );
+    const docId = docFile.id;
+    const text = DocumentApp.openById(docId).getBody().getText();
+    Drive.Files.remove(docId); // cleanup
+    return { success: true, text: text.slice(0, 10000) };
+  } catch(err) {
+    return { error: "Extract failed: " + err.message + " — pastikan Advanced Drive Service diaktifkan (Resources > Advanced Google Services > Drive API ON)" };
+  }
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 function login(d) {
   const users = sheetToJSON(SH.users);
@@ -210,7 +244,7 @@ function addEquipment(d) {
   const id = genId("EQ");
   ss.getSheetByName(SH.equipment).appendRow([
     id, d.name, d.type, d.brand, d.model, d.serialNo, d.year,
-    d.status||"Active", d.location||"", d.specs||"", d.manualText||"",
+    d.status||"Active", d.location||"", d.specs||"", d.manualText||"", d.manualFileId||"",
     d.imgFront||"", d.imgSide||"", d.imgIso||"", nowStr()
   ]);
   return { success: true, id };
@@ -221,7 +255,7 @@ function editEquipment(d) {
   if (!f) return { error: "Not found" };
   const map = { Name:d.name, Type:d.type, Brand:d.brand, Model:d.model, SerialNo:d.serialNo,
     Year:d.year, Status:d.status, Location:d.location, Specs:d.specs, ManualText:d.manualText,
-    ImgFront:d.imgFront, ImgSide:d.imgSide, ImgIso:d.imgIso };
+    ManualFileId:d.manualFileId, ImgFront:d.imgFront, ImgSide:d.imgSide, ImgIso:d.imgIso };
   Object.entries(map).forEach(([k,v]) => {
     if (v !== undefined) setCell(SH.equipment, k, v, d.id, "EquipmentID");
   });
@@ -591,7 +625,7 @@ function aiGroq(prompt) {
 function setupSheets() {
   const headers = {
     Users      : ["Username","Password","FullName","Role","Active","Photo","CreatedAt"],
-    Equipment  : ["EquipmentID","Name","Type","Brand","Model","SerialNo","Year","Status","Location","Specs","ManualText","ImgFront","ImgSide","ImgIso","CreatedAt"],
+    Equipment  : ["EquipmentID","Name","Type","Brand","Model","SerialNo","Year","Status","Location","Specs","ManualText","ManualFileId","ImgFront","ImgSide","ImgIso","CreatedAt"],
     SpareParts : ["PartID","Name","PartNo","EquipmentID","Unit","MinStock","Specs","ImgFront","ImgSide","ImgIso","CreatedAt"],
     WorkOrders : ["WOID","Date","EquipmentID","Mechanic","Collaborators","ActivityType","Description","Status","Priority","NeededParts","NeededPartsDesc","NeededPartsImg","StartTime","DoneTime","ConfirmedBy","ConfirmedAt"],
     PartsUsed  : ["RecordID","WOID","PartID","QtyUsed","Date"],

@@ -508,7 +508,17 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
       <div class="fg"><label>Location</label><input id="eq-loc"/></div>
       <div class="fg"><label>Status</label><select id="eq-status"><option>Active</option><option>Maintenance</option><option>Waiting for Sparepart</option><option>Retired</option></select></div>
       <div class="fg full"><label>Specifications</label><textarea id="eq-specs"></textarea></div>
-      <div class="fg full"><label>📖 Manual Book / Panduan</label><textarea id="eq-manual" placeholder="Tempelkan teks manual book atau panduan equipment di sini. AI akan membaca ini saat melakukan diagnosis." style="min-height:100px"></textarea></div>
+      <div class="fg full"><label>📖 Manual Book / Panduan</label><textarea id="eq-manual" placeholder="Tempelkan teks manual book atau panduan equipment di sini. AI akan membaca ini saat melakukan diagnosis." style="min-height:100px"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <label class="ph-btn" style="cursor:pointer;background:var(--org)">
+            📄 Upload PDF
+            <input type="file" accept=".pdf" class="cam-file" onchange="uploadManualPdf(this)"/>
+          </label>
+          <span id="manualPdfStatus" style="font-size:11px;color:var(--sub)">Belum ada file PDF</span>
+          <button class="ph-btn remove" id="manualPdfRemove" style="display:none" onclick="removeManualPdf()">🗑 Hapus PDF</button>
+        </div>
+      </div>
+      <input type="hidden" id="eq-manualFileId"/>
     </div>
     <div class="sep"></div>
     <span class="slbl">📷 Equipment Photos</span>
@@ -669,7 +679,7 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
 <script>
 // ══════════════════════════════════════════════════════════════
 // CONFIG
-const API = "https://script.google.com/macros/s/AKfycbwAj3lLaXrXxAa7nDFvvFxMwAZ-abak335zK0beNUCHQt5k_EZZN__E4sYSiROytoUT/exec";
+const API = "https://script.google.com/macros/s/AKfycbzGfrdaQ1c4LolV0Y7mycg4YuHHqeJtCCQiOgsr-dsS51I3XYQl1jwx-Ej63nACMQEW/exec";
 
 // ══════════════════════════════════════════════════════════════
 // UTILS
@@ -950,7 +960,9 @@ function eqEdit(e){
   editId=e.EquipmentID;
   ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual"]
     .forEach((id,i)=>sv(id,[e.EquipmentID,e.Name,e.Brand,e.Model,e.SerialNo,e.Year,e.Location,e.Specs,e.ManualText][i]));
-  sv("eq-type",e.Type); sv("eq-status",e.Status);
+  sv("eq-type",e.Type); sv("eq-status",e.Status); sv("eq-manualFileId",e.ManualFileId||"");
+  if(e.ManualFileId){$("manualPdfStatus").innerHTML="✅ PDF terpasang";$("manualPdfStatus").style.color="var(--ok)";$("manualPdfRemove").style.display="inline-flex"}
+  else{$("manualPdfStatus").innerHTML="Belum ada file PDF";$("manualPdfStatus").style.color="var(--sub)";$("manualPdfRemove").style.display="none"}
   photos.eq={front:{url:e.ImgFront||""},side:{url:e.ImgSide||""},iso:{url:e.ImgIso||""}};
   renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]);
   $("mEqT").textContent="✏️ Edit Equipment"; om("mEq");
@@ -958,7 +970,7 @@ function eqEdit(e){
 
 async function submitEq(){
   const d={name:gv("eq-name"),type:gv("eq-type"),brand:gv("eq-brand"),model:gv("eq-model"),
-    serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs"),manualText:gv("eq-manual")};
+    serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs"),manualText:gv("eq-manual"),manualFileId:gv("eq-manualFileId")};
   if(!d.name){toast("Equipment name required","warn");return}
   toast("Saving…","info");
   d.imgFront=await uploadSlot(photos.eq,"front")||"";
@@ -969,68 +981,34 @@ async function submitEq(){
   else toast("Error: "+r.error,"err");
 }
 
-async function dlEqPDF(eqId){
-  const e=EQ.find(x=>x.EquipmentID===eqId); if(!e) return;
-  const parts=PT.filter(p=>p.EquipmentID===eqId);
-  const wos=WO.filter(w=>w.EquipmentID===eqId);
-  const {jsPDF}=window.jspdf; const doc=new jsPDF();
-  let y=15;
-  doc.setFontSize(20);doc.setFont(undefined,"bold");doc.text("Equipment Report",14,y);y+=8;
-  doc.setFontSize(9);doc.setFont(undefined,"normal");doc.text(`Generated: ${new Date().toLocaleString()}`,14,y);y+=10;
-  doc.autoTable({startY:y,head:[["Field","Value"]],
-    body:[["Name",e.Name],["Type",e.Type],["Brand",e.Brand||""],["Model",e.Model||""],["Serial",e.SerialNo||""],["Year",e.Year||""],["Location",e.Location||""],["Status",e.Status],["Specs",e.Specs||""]],
-    styles:{fontSize:9},headStyles:{fillColor:[15,23,42]},columnStyles:{0:{fontStyle:"bold",cellWidth:40}}});
-  y=doc.lastAutoTable.finalY+10;
-  // Equipment Photos
-  const imgs=[{url:e.ImgFront,label:"Front"},{url:e.ImgSide,label:"Side"},{url:e.ImgIso,label:"Isometric"}];
-  const hasImg=imgs.some(i=>i.url&&i.url!=="undefined"&&i.url!=="null"&&i.url!=="");
-  if(hasImg){
-    doc.setFontSize(12);doc.setFont(undefined,"bold");doc.text("Equipment Photos",14,y);y+=7;
-    const imgX=[14,74,134];
-    for(let i=0;i<imgs.length;i++){
-      const iu=imgs[i];
-      if(iu.url&&iu.url!=="undefined"&&iu.url!=="null"&&iu.url!==""){
-        try{
-          const fdUrl=fixDriveUrl(iu.url);
-          const dUrl=await imgToDataUrl(fdUrl);
-          if(dUrl) doc.addImage(dUrl,"JPEG",imgX[i],y,55,42);
-        }catch(e){}
-      }
-    }
-    if(hasImg) y+=48;
-  }
-  if(parts.length){
-    if(y>240){doc.addPage();y=15}
-    doc.setFontSize(12);doc.setFont(undefined,"bold");doc.text("Spare Parts",14,y);y+=5;
-    doc.autoTable({startY:y,head:[["Name","Part No.","Unit","Min Stock","Specs"]],
-      body:parts.map(p=>[p.Name,p.PartNo||"",p.Unit,p.MinStock,p.Specs||""]),
-      styles:{fontSize:8},headStyles:{fillColor:[15,23,42]}});
-    y=doc.lastAutoTable.finalY+10;
-  }
-  if(wos.length){
-    if(y>240){doc.addPage();y=15}
-    doc.setFontSize(12);doc.setFont(undefined,"bold");doc.text("Work Order History",14,y);y+=5;
-    doc.autoTable({startY:y,head:[["WO ID","Date","Mechanic","Activity","Status","Start","Done"]],
-      body:wos.map(w=>[w.WOID,fd(w.Date),w.Mechanic,w.ActivityType,w.Status,fd(w.StartTime),fd(w.DoneTime)]),
-      styles:{fontSize:8},headStyles:{fillColor:[15,23,42]}});
-  }
-  doc.save(`Equipment_${e.Name.replace(/\s+/g,"_")}.pdf`);
+async function uploadManualPdf(input){
+  const file=input.files[0]; if(!file) return;
+  toast("📄 Uploading PDF...","info");
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const base64=e.target.result.split(",")[1];
+    const r=await POST("uploadManual",{base64,mimeType:file.type,filename:file.name});
+    if(r.success){
+      sv("eq-manualFileId",r.fileId);
+      $("manualPdfStatus").innerHTML=`✅ ${file.name} (${(file.size/1024).toFixed(0)} KB)`;
+      $("manualPdfStatus").style.color="var(--ok)";
+      $("manualPdfRemove").style.display="inline-flex";
+      toast("✅ PDF terupload! Klik Save untuk menyimpan.","ok");
+      // Auto-extract text
+      const ext=await POST("extractManualText",{fileId:r.fileId});
+      if(ext.success){sv("eq-manual",ext.text);toast("📄 Teks manual berhasil diekstrak!","ok")}
+      else toast("⚠️ "+ext.error,"warn");
+    }else toast("Error: "+r.error,"err");
+    input.value="";
+  };
+  reader.readAsDataURL(file);
 }
 
-function imgToDataUrl(url){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.crossOrigin="anonymous";
-    img.onload=()=>{
-      try{
-        const c=document.createElement("canvas");c.width=img.width;c.height=img.height;
-        const ctx=c.getContext("2d");ctx.drawImage(img,0,0);
-        resolve(c.toDataURL("image/jpeg",0.85));
-      }catch(e){resolve(null)}
-    };
-    img.onerror=()=>resolve(null);
-    img.src=url;
-  });
+function removeManualPdf(){
+  sv("eq-manualFileId",""); sv("eq-manual","");
+  $("manualPdfStatus").innerHTML="Belum ada file PDF";
+  $("manualPdfStatus").style.color="var(--sub)";
+  $("manualPdfRemove").style.display="none";
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1688,7 +1666,8 @@ async function cfmDel(){
 function onAdd(){
   editId=null; collabs=[]; photos={eq:{},pt:{},woparts:{},user:{}};
   const map={
-    equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual"].forEach(id=>sv(id,""));
+    equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs","eq-manual","eq-manualFileId"].forEach(id=>sv(id,""));
+      $("manualPdfStatus").innerHTML="Belum ada file PDF";$("manualPdfStatus").style.color="var(--sub)";$("manualPdfRemove").style.display="none";
       renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]); $("mEqT").textContent="➕ Add Equipment"; om("mEq"); },
     workorder:()=>{ ["wo-id","wo-mech","wo-desc","wo-parts","wo-partsDesc"].forEach(id=>sv(id,""));
       sv("wo-mech",S?.fullName||S?.username||""); collabs=[]; renderTags();
