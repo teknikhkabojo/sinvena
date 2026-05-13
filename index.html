@@ -1010,8 +1010,16 @@ async function extractPdfText(file){
 
 async function uploadManualPdf(input){
   const file=input.files[0]; if(!file) return;
-  toast("📄 Uploading PDF...","info");
-  // Upload to Drive
+  // 1. Extract text via PDF.js (cepat, lokal)
+  try{
+    const text=await extractPdfText(file);
+    if(text.trim()){
+      const existing=gv("eq-manual");
+      sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+text);
+      toast("✅ Teks dari "+file.name+" berhasil diekstrak!","ok");
+    } else toast("⚠️ File tidak mengandung teks (mungkin scan)","warn");
+  }catch(e){toast("⚠️ Gagal baca PDF","err");input.value="";return}
+  // 2. Upload ke Drive di background (tanpa blocking)
   const reader=new FileReader();
   reader.onload=async e=>{
     const base64=e.target.result.split(",")[1];
@@ -1020,16 +1028,8 @@ async function uploadManualPdf(input){
       _manualPdfIds.push({fileId:r.fileId,name:file.name});
       sv("eq-manualFileId",_manualPdfIds.map(x=>x.fileId).join(","));
       renderManualPdfList();
-      // Extract text client-side via PDF.js
-      try{
-        const text=await extractPdfText(file);
-        if(text.trim()){
-          const existing=gv("eq-manual");
-          sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+text);
-          toast("✅ PDF berhasil diekstrak!","ok");
-        } else toast("⚠️ PDF tidak mengandung teks (mungkin scan gambar)","warn");
-      }catch(e){toast("⚠️ Gagal ekstrak: PDF mungkin scan gambar","warn")}
-    }else toast("Error: "+r.error,"err");
+      toast("📄 File "+file.name+" tersimpan di Drive","ok");
+    } else toast("⚠️ File gagal tersimpan: "+r.error,"warn");
     input.value="";
   };
   reader.readAsDataURL(file);
