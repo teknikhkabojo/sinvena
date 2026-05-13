@@ -781,7 +781,7 @@ async function doLogin(){
   const btn=$("lBtn"); btn.textContent="Signing in…"; btn.disabled=true; $("lErr").textContent="";
   const r=await POST("login",{username:u,password:p});
   if(r.success){
-    S=r; hide("loginScreen");
+    S=r; clearChat(); hide("loginScreen");
     show("mainNav","flex"); show("tabBar","flex"); show("bottomNav","flex");
     $("navName").textContent=S.fullName||S.username;
     $("roleLabel").textContent=S.role==="mechanic"?"🔧 Mechanic":S.role==="supervisor"?"👷 Supervisor":"📊 Manager";
@@ -795,8 +795,8 @@ async function doLogin(){
   btn.textContent="Sign In →"; btn.disabled=false;
 }
 function doLogout(){
-  S=null; show("loginScreen","flex"); ["mainNav","tabBar","bottomNav"].forEach(hide);
-  sv("lU",""); sv("lP","");
+  saveChat(); S=null; show("loginScreen","flex"); ["mainNav","tabBar","bottomNav"].forEach(hide);
+  sv("lU",""); sv("lP",""); clearChat();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1454,7 +1454,25 @@ async function runAiDiagnose(){
 
 function openAiChat(){
   if($("mAiChat").classList.contains("open")){cm("mAiChat");return}
-  om("mAiChat");
+  loadChat(); om("mAiChat");
+}
+
+function chatKey(){return "sinvena_chat_"+(S?.username||"guest")}
+
+function saveChat(){
+  const box=$("aiChatBox"); if(!box) return;
+  try{localStorage.setItem(chatKey(),box.innerHTML)}catch(e){}
+}
+function loadChat(){
+  const box=$("aiChatBox"); if(!box) return;
+  try{
+    const saved=localStorage.getItem(chatKey());
+    box.innerHTML=saved||`<div class="ai-msg ai-assistant" style="background:var(--card);padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;box-shadow:var(--sh);border:1px solid var(--bdr);max-width:90%">👋 Halo! Saya asisten AI SINVENA. Tanya apa saja tentang equipment, work orders, parts, atau cara pakai aplikasi.</div>`;
+  }catch(e){}
+}
+function clearChat(){
+  const box=$("aiChatBox"); if(!box) return;
+  box.innerHTML=`<div class="ai-msg ai-assistant" style="background:var(--card);padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;box-shadow:var(--sh);border:1px solid var(--bdr);max-width:90%">👋 Halo! Saya asisten AI SINVENA. Tanya apa saja tentang equipment, work orders, parts, atau cara pakai aplikasi.</div>`;
 }
 
 async function sendAiChat(){
@@ -1472,6 +1490,7 @@ async function sendAiChat(){
   if(loading) loading.remove();
   box.innerHTML+=`<div class="ai-msg ai-assistant" style="background:var(--card);padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;box-shadow:var(--sh);border:1px solid var(--bdr);max-width:90%">${r.text||r.error||"Maaf, tidak ada jawaban."}</div>`;
   box.scrollTop=box.scrollHeight;
+  saveChat();
 }
 
 function buildContext(){
