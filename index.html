@@ -1478,7 +1478,7 @@ async function runAiDiagnose(){
   el.innerHTML=`<div class="spin">🔍 Menganalisa...</div>`;
   const eq=EQ.find(x=>x.EquipmentID===_diagEqId);
   const manual=eq?.ManualText||"";
-  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,15000)}` : "";
+  const manualInfo=manual ? `\n\nMANUAL BOOK / PANDUAN EQUIPMENT:\n${manual.slice(0,40000)}` : "";
   // Get work order history for this equipment
   const woHist=WO.filter(w=>w.EquipmentID===_diagEqId).reverse().slice(0,10);
   const histInfo=woHist.length ? `\n\nRIWAYAT WORK ORDER (${woHist.length} terakhir):\n${woHist.map(w=>`- ${w.WOID}: ${w.ActivityType} | ${w.Status} | Mekanik: ${w.Mechanic} | Tgl: ${fd(w.Date)}`).join("\n")}` : "";

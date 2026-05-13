@@ -534,7 +534,7 @@ function aiHandler(d) {
   let fullPrompt = "";
 
   if (mode === "summarize") {
-    const raw = prompt.slice(0, 12000);
+    const raw = prompt.slice(0, 30000);
     fullPrompt = `Anda adalah asisten yang merangkum manual book / buku panduan equipment menjadi poin-poin penting dan terstruktur dalam Bahasa Indonesia.
 
 RINGKASLAH teks manual berikut menjadi format:
