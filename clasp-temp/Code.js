@@ -560,14 +560,7 @@ Activity type: ${prompt}
 Format: respond with JSON like {"description":"...","priority":"..."}`;
 
   } else if (mode === "diagnose" || mode === "diagnoseFull") {
-    fullPrompt = `[INSTRUKSI: Jawab HANYA dengan JSON, tanpa teks lain, tanpa salam, tanpa "Halo!", tanpa penjelasan]
-{
-  "diagnosis": "Penjelasan singkat diagnosis dalam Bahasa Indonesia berdasarkan data equipment dan gejala",
-  "possibleCauses": ["Penyebab 1", "Penyebab 2", "Penyebab 3"],
-  "recommendedActions": ["Langkah 1", "Langkah 2", "Langkah 3"],
-  "conclusion": "Kesimpulan dan rekomendasi",
-  "references": ["Sumber referensi yang digunakan"]
-}
+    fullPrompt = `Kamu adalah teknisi ahli. Berikut DATA dan GEJALA yang dilaporkan. Gunakan informasi dari MANUAL BOOK dan REFERENSI yang tersedia untuk memberikan diagnosis AKURAT.
 
 DATA EQUIPMENT:
 ${context}
@@ -575,7 +568,18 @@ ${context}
 GEJALA:
 ${prompt}
 
-${mode === "diagnoseFull" ? "Gunakan manual book, riwayat WO, dan data parts sebagai referensi." : ""}
+INSTRUKSI FORMAT:
+Jawab HANYA dengan JSON valid, tanpa teks lain, tanpa salam.
+Acu langsung ke spesifikasi, angka, dan prosedur dari manual book. JANGAN berikan jawaban generik.
+
+Contoh format:
+{
+  "diagnosis": "Diagnosis spesifik mengacu data manual",
+  "possibleCauses": ["Penyebab spesifik 1", "Penyebab spesifik 2"],
+  "recommendedActions": ["Langkah perbaikan dari manual", "Langkah 2"],
+  "conclusion": "Kesimpulan berdasarkan data",
+  "references": ["Manual book - halaman/bab spesifik", "Data riwayat WO"]
+}
 
 JSON:`;
 
