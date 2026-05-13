@@ -972,10 +972,10 @@ async function submitEq(){
   const d={name:gv("eq-name"),type:gv("eq-type"),brand:gv("eq-brand"),model:gv("eq-model"),
     serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs"),manualText:gv("eq-manual")};
   if(!d.name){toast("Equipment name required","warn");return}
-  toast("Saving…","info");
-  d.imgFront=await uploadSlot(photos.eq,"front")||"";
-  d.imgSide =await uploadSlot(photos.eq,"side")||"";
-  d.imgIso  =await uploadSlot(photos.eq,"iso")||"";
+  toast("Menyimpan...","info");
+  [d.imgFront,d.imgSide,d.imgIso]=await Promise.all([
+    uploadSlot(photos.eq,"front"),uploadSlot(photos.eq,"side"),uploadSlot(photos.eq,"iso")
+  ]).then(r=>r.map(x=>x||""));
   const r=editId?await POST("editEquipment",{...d,id:editId}):await POST("addEquipment",d);
   if(r.success){toast(editId?"✅ Updated!":"✅ Added!");cm("mEq");photos.eq={};await loadEQ();loadDash();}
   else toast("Error: "+r.error,"err");
@@ -1573,16 +1573,25 @@ function renderPhotoSlots(containerId, ctx, labels){
 
 function handleSlotFile(input,ctx,key){
   const file=input.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const dataUrl=e.target.result;
+  // Compress image before upload
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const maxW=1200, maxH=1200;
+    let w=img.width, h=img.height;
+    if(w>maxW){h*=maxW/w;w=maxW}
+    if(h>maxH){w*=maxH/h;h=maxH}
+    const c=document.createElement("canvas");c.width=w;c.height=h;
+    const ctx2=c.getContext("2d");ctx2.drawImage(img,0,0,w,h);
+    const dataUrl=c.toDataURL("image/jpeg",0.8);
+    URL.revokeObjectURL(url);
     const oldFileId=(photos[ctx]&&photos[ctx][key])?extractFileId(photos[ctx][key].url):null;
     if(!photos[ctx]) photos[ctx]={};
-    photos[ctx][key]={base64:dataUrl.split(",")[1],mimeType:file.type,filename:`${ctx}_${key}_${Date.now()}.jpg`,url:dataUrl,_new:true,_oldFileId:oldFileId};
+    photos[ctx][key]={base64:dataUrl.split(",")[1],mimeType:"image/jpeg",filename:`${ctx}_${key}_${Date.now()}.jpg`,url:dataUrl,_new:true,_oldFileId:oldFileId};
     const slot=$(`slot-${ctx}-${key}`);
     if(slot){ const lbl=slot.querySelector(".photo-slot-label")?.textContent||key; refreshSlotPrev(ctx,key,lbl); }
   };
-  reader.readAsDataURL(file);
+  img.src=url;
 }
 
 function refreshSlotPrev(ctx,key,label){
