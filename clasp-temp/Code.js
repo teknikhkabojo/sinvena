@@ -532,7 +532,25 @@ function aiHandler(d) {
   const context = d.context || "";
   let fullPrompt = "";
 
-  if (mode === "suggestWO") {
+  if (mode === "summarize") {
+    const raw = prompt.slice(0, 12000);
+    fullPrompt = `Anda adalah asisten yang merangkum manual book / buku panduan equipment menjadi poin-poin penting dan terstruktur dalam Bahasa Indonesia.
+
+RINGKASLAH teks manual berikut menjadi format:
+1. SPESIFIKASI TEKNIS: (poin-poin penting spesifikasi)
+2. CARA OPERASI: (langkah-langkah penting pengoperasian) 
+3. PERAWATAN: (jadwal dan cara perawatan)
+4. TROUBLESHOOTING: (masalah umum dan solusi)
+5. BAGIAN PENTING LAINNYA: (jika ada)
+
+Gunakan bahasa Indonesia yang jelas dan ringkas. Hanya sertakan informasi yang benar-benar penting.
+
+TEKS MANUAL:
+${raw}
+
+RINGKASAN:`;
+
+  } else if (mode === "suggestWO") {
     fullPrompt = `You are an equipment maintenance assistant. Based on the following work order information, provide:
 1. A detailed work description (2-3 sentences, in Indonesian)
 2. Suggested priority (Normal/High/Urgent)

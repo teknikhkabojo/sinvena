@@ -681,7 +681,7 @@ label.ph-btn{background:var(--a);color:#fff;cursor:pointer}label.ph-btn:hover{bo
 <script>
 // ══════════════════════════════════════════════════════════════
 // CONFIG
-const API = "https://script.google.com/macros/s/AKfycbySu1isIfqPGpUuizCoctqBrIX0Jdd7ukh_Q8r7BCXOiYLJMNU3gt2jx4c9kL0RYH56/exec";
+const API = "https://script.google.com/macros/s/AKfycbystTIDdeF0OQgMn4hdMOvh25dnSZmdhrwiSg06AwFcZ-5ljzhYlp262MYln4WhqnuP/exec";
 
 // ══════════════════════════════════════════════════════════════
 // UTILS
@@ -985,14 +985,21 @@ async function extractPdfText(file){
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
   let text="";
-  const maxPages=Math.min(pdf.numPages,5);
-  for(let i=1;i<=maxPages;i++){
+  for(let i=1;i<=pdf.numPages;i++){
     const page=await pdf.getPage(i);
     const content=await page.getTextContent();
     text+=content.items.map(s=>s.str).join(" ")+"\n";
   }
-  if(pdf.numPages>5) text+="\n[... "+(pdf.numPages-5)+" halaman berikutnya tidak diekstrak. Simpan dulu, lalu upload halaman sisanya secara terpisah jika perlu.]";
   return text;
+}
+
+async function summarizeText(text,fileName){
+  toast("🧠 Meringkas manual dengan AI...","info");
+  const r=await AI(text,"summarize","");
+  if(r.text&&r.text.trim()){
+    sv("eq-manual",(gv("eq-manual")?gv("eq-manual")+"\n\n--- Ringkasan "+fileName+" ---\n":"")+r.text);
+    toast("✅ Ringkasan "+fileName+" selesai!","ok");
+  } else {sv("eq-manual",(gv("eq-manual")?gv("eq-manual")+"\n\n--- "+fileName+" ---\n":"")+text);toast("⚠️ Gagal meringkas, teks asli disimpan","warn")}
 }
 
 async function uploadManualPdf(input){
@@ -1000,9 +1007,7 @@ async function uploadManualPdf(input){
   try{
     const text=await extractPdfText(file);
     if(text.trim()){
-      const existing=gv("eq-manual");
-      sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+text);
-      toast("✅ Teks dari "+file.name+" berhasil diekstrak!","ok");
+      await summarizeText(text,file.name);
     } else toast("⚠️ File tidak mengandung teks (mungkin scan)","warn");
   }catch(e){toast("⚠️ Gagal baca PDF","err")}
   input.value="";
