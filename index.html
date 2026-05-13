@@ -14,6 +14,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -994,9 +996,22 @@ function renderManualPdfList(){
     </div>`).join("");
 }
 
+async function extractPdfText(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(s=>s.str).join(" ")+"\n";
+  }
+  return text;
+}
+
 async function uploadManualPdf(input){
   const file=input.files[0]; if(!file) return;
   toast("📄 Uploading PDF...","info");
+  // Upload to Drive
   const reader=new FileReader();
   reader.onload=async e=>{
     const base64=e.target.result.split(",")[1];
@@ -1005,13 +1020,15 @@ async function uploadManualPdf(input){
       _manualPdfIds.push({fileId:r.fileId,name:file.name});
       sv("eq-manualFileId",_manualPdfIds.map(x=>x.fileId).join(","));
       renderManualPdfList();
-      // Auto-extract
-      const ext=await POST("extractManualText",{fileId:r.fileId});
-      if(ext.success){
-        const existing=gv("eq-manual");
-        sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+ext.text);
-        toast("✅ Teks dari "+file.name+" berhasil diekstrak!","ok");
-      } else toast("⚠️ Ekstrak gagal: "+ext.error,"warn");
+      // Extract text client-side via PDF.js
+      try{
+        const text=await extractPdfText(file);
+        if(text.trim()){
+          const existing=gv("eq-manual");
+          sv("eq-manual",existing+(existing?"\n\n--- "+file.name+" ---\n":"")+text);
+          toast("✅ PDF berhasil diekstrak!","ok");
+        } else toast("⚠️ PDF tidak mengandung teks (mungkin scan gambar)","warn");
+      }catch(e){toast("⚠️ Gagal ekstrak: PDF mungkin scan gambar","warn")}
     }else toast("Error: "+r.error,"err");
     input.value="";
   };
@@ -1019,16 +1036,14 @@ async function uploadManualPdf(input){
 }
 
 async function extractAllPdfs(){
-  const ids=_manualPdfIds.map(x=>x.fileId).filter(Boolean);
-  if(!ids.length){toast("Tidak ada PDF untuk diekstrak","warn");return}
-  toast("📖 Mengekstrak semua PDF...","info");
+  toast("📖 Proses extract semua PDF...","info");
   let allText="";
   for(const f of _manualPdfIds){
     const ext=await POST("extractManualText",{fileId:f.fileId});
     if(ext.success) allText+=(allText?"\n\n--- "+f.name+" ---\n":"")+ext.text;
   }
   if(allText){sv("eq-manual",allText);toast("✅ Semua PDF berhasil diekstrak!","ok")}
-  else toast("⚠️ Gagal ekstrak","err");
+  else toast("⚠️ Gagal ekstrak, coba manual paste","warn");
 }
 
 function removePdf(idx){
