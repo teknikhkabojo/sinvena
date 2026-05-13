@@ -5,7 +5,6 @@
 const SHEET_ID      = "1iWTa93i4gWDZobBbY9DFga1EzR6vF-Ak-mHkoZmeH8o";
 const GDRIVE_FOLDER = "1ajqJv_QDWi03OuLGK5hoh-4nsSjzwR0H";
 const WAREHOUSE_EXT = "1XWaC-OaYFjwu1ZuqH_X6wabYMQdbVplBQJQw1M2rqHs";
-// GROQ_KEY is in config.gs (not tracked by git)
 const WAREHOUSE_TAB = "Mirroring data";
 
 const ss = SpreadsheetApp.openById(SHEET_ID);
@@ -66,7 +65,6 @@ function doPost(e) {
     if (a === "updateWOStatus")    return jsonRes(updateWOStatus(p.data));
     if (a === "confirmWODone")     return jsonRes(confirmWODone(p.data));
     if (a === "addPartsUsed")      return jsonRes(addPartsUsed(p.data));
-    if (a === "ai")                return jsonRes(aiHandler(p.data));
     return jsonRes({ error: "Unknown POST action" });
   } catch(err) { return jsonRes({ error: err.message }); }
 }
@@ -490,78 +488,6 @@ function getDashboard() {
     thisMonthTotal  : thisMonthWO.length,
     thisMonthDone   : thisMonthWO.filter(w => w.Status === "Done").length,
   };
-}
-
-// ── AI / GEMINI ───────────────────────────────────────────────
-function aiHandler(d) {
-  const mode = d.mode || "chat";
-  const prompt = d.prompt || "";
-  const context = d.context || "";
-  let fullPrompt = "";
-
-  if (mode === "suggestWO") {
-    fullPrompt = `You are an equipment maintenance assistant. Based on the following work order information, provide:
-1. A detailed work description (2-3 sentences, in Indonesian)
-2. Suggested priority (Normal/High/Urgent)
-
-Equipment: ${context}
-Activity type: ${prompt}
-Format: respond with JSON like {"description":"...","priority":"..."}`;
-
-  } else if (mode === "diagnose") {
-    fullPrompt = `You are an equipment diagnostic expert. Based on the following information, provide a diagnosis and recommended actions in Indonesian.
-
-Equipment: ${context}
-Symptoms/Issue: ${prompt}
-
-Provide response as JSON: {"diagnosis":"...","possibleCauses":["...","..."],"recommendedActions":["...","..."]}`;
-
-  } else {
-    // chat mode
-    fullPrompt = `You are an AI assistant for an Equipment Inventory System called SINVENA. 
-Answer the following question based on the context provided. Be concise and helpful.
-If you don't know, say you don't know.
-
-Context data:
-${context}
-
-User question: ${prompt}
-Answer in Indonesian:`;
-  }
-
-  return aiGroq(fullPrompt);
-}
-
-function aiGroq(prompt) {
-  try {
-    const url = "https://api.groq.com/openai/v1/chat/completions";
-    const payload = {
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1024
-    };
-    const options = {
-      method: "post",
-      headers: { Authorization: "Bearer " + GROQ_KEY },
-      contentType: "application/json",
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-    const res = UrlFetchApp.fetch(url, options);
-    const json = JSON.parse(res.getContentText());
-    if (json.choices && json.choices[0] && json.choices[0].message) {
-      const text = json.choices[0].message.content.trim();
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try { return JSON.parse(jsonMatch[0]); } catch(e) {}
-      }
-      return { success: true, text };
-    }
-    return { error: json.error?.message || "Empty response" };
-  } catch(err) {
-    return { error: err.message };
-  }
 }
 
 // ── SETUP ─────────────────────────────────────────────────────

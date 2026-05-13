@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="theme-color" content="#1e3a5f"/>
+<title>Equipment Inventory System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --p:#1e3a5f;--p2:#162d4a;--a:#4a90d9;--a2:#357abd;
+  --ok:#27ae60;--warn:#f39c12;--err:#e74c3c;--pur:#7c3aed;--org:#c05500;
+  --bg:#eef2f7;--card:#fff;--txt:#1a2533;--sub:#6b7a8d;--bdr:#e2e8f0;--inp:#f8fafc;
+  --nav:60px;--bot:68px;--r:14px;--rs:8px;
+  --sh:0 2px 12px rgba(0,0,0,.07);--sh2:0 8px 32px rgba(0,0,0,.16);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;background:var(--bg);color:var(--txt);overflow-x:hidden}
+body{padding-bottom:calc(var(--bot)+80px)}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(145deg,#0f2240,#1e3a5f,#4a90d9);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px}
+.lbox{background:#fff;border-radius:24px;padding:40px 32px;width:100%;max-width:400px;box-shadow:var(--sh2)}
+.llogo{text-align:center;margin-bottom:30px}
+.llogo .lic{font-size:56px;display:block;margin-bottom:12px}
+.llogo h2{font-size:24px;font-weight:900;color:var(--p)}
+.llogo p{color:var(--sub);font-size:13px;margin-top:5px}
+.lf label{display:block;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.lf input{width:100%;padding:13px 16px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:15px;background:var(--inp);outline:none;transition:.2s;margin-bottom:14px}
+.lf input:focus{border-color:var(--a);background:#fff;box-shadow:0 0 0 4px rgba(74,144,217,.12)}
+.lbtn{width:100%;padding:15px;background:var(--a);color:#fff;border:none;border-radius:var(--rs);font-size:16px;font-weight:800;cursor:pointer}
+.lbtn:hover{background:var(--a2)}.lbtn:active{transform:scale(.98)}
+.lerr{color:var(--err);font-size:13px;text-align:center;margin-top:12px;min-height:18px;font-weight:600}
+
+/* NAV */
+#mainNav{display:none;position:sticky;top:0;z-index:100;background:var(--p);height:var(--nav);padding:0 14px;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.25)}
+.nlogo{color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
+.nright{display:flex;align-items:center;gap:8px}
+.nav-user{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);padding:5px 10px;border-radius:24px;border:1px solid rgba(255,255,255,.2)}
+.nav-avatar{width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:var(--a2);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:700;overflow:hidden;flex-shrink:0}
+.nav-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.nav-name{color:#fff;font-size:12px;font-weight:700;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpill{background:rgba(255,255,255,.15);color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid rgba(255,255,255,.2);margin-top:2px;display:inline-block}
+.lout{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:6px 11px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer}
+
+/* TABS */
+#tabBar{display:none;background:var(--p2);padding:0 8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-bottom:1px solid rgba(255,255,255,.08)}
+#tabBar::-webkit-scrollbar{display:none}
+.tab{display:inline-flex;align-items:center;gap:5px;color:rgba(255,255,255,.45);padding:11px 13px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+.tab.active{color:#fff;border-bottom-color:var(--a)}
+
+/* PAGES */
+.page{display:none;padding:14px;padding-bottom:100px;max-width:100%;animation:fi .18s ease}
+.page.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* BOTTOM NAV */
+#bottomNav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bot);background:#fff;border-top:1px solid var(--bdr);box-shadow:0 -4px 20px rgba(0,0,0,.1);z-index:100;padding:0 8px;padding-bottom:env(safe-area-inset-bottom);align-items:center;justify-content:space-around}
+.bnav{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 10px;border:none;background:transparent;cursor:pointer;border-radius:12px;font-size:10px;font-weight:700;color:var(--sub);min-width:52px;transition:.15s}
+.bnav .bi{font-size:21px}.bnav.add{color:var(--a)}.bnav.edi{color:var(--warn)}.bnav.del{color:var(--err)}.bnav.ref{color:var(--ok)}
+.bnav:active{transform:scale(.88)}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:visible}
+.ch{padding:13px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ct{font-size:14px;font-weight:800;color:var(--p)}
+.cb{padding:14px 16px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border-radius:var(--r);padding:14px 10px;text-align:center;box-shadow:var(--sh);position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--a)}
+.stat.ok::after{background:var(--ok)}.stat.warn::after{background:var(--warn)}.stat.err::after{background:var(--err)}.stat.pur::after{background:var(--pur)}
+.stat .num{font-size:28px;font-weight:900;line-height:1;color:var(--p)}
+.stat.ok .num{color:var(--ok)}.stat.warn .num{color:var(--warn)}.stat.err .num{color:var(--err)}.stat.pur .num{color:var(--pur)}
+.stat .lbl{font-size:10px;color:var(--sub);margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+
+/* DASH GRID */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-bottom:14px}
+.rank-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)}
+.rank-item:last-child{border-bottom:none}
+.rank-no{width:26px;height:26px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--sub);flex-shrink:0}
+.rank-no.gold{background:#fef3cd;color:#b7770d}.rank-no.silver{background:#f0f0f0;color:#666}.rank-no.bronze{background:#fde8d8;color:#9a5a1f}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-size:13px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-sub{font-size:11px;color:var(--sub);margin-top:1px}
+.rank-val{font-size:13px;font-weight:800;color:var(--a);white-space:nowrap}
+
+/* TREND */
+.trend-wrap{overflow-x:auto}
+.trend-inner{display:flex;align-items:flex-end;gap:6px;height:80px;min-width:280px;padding:0 4px}
+.tbar-group{flex:1;display:flex;flex-direction:column;align-items:center}
+.tbar-bars{display:flex;gap:2px;align-items:flex-end;width:100%;height:72px}
+.tbar{flex:1;border-radius:3px 3px 0 0;min-height:3px;cursor:pointer;transition:.3s}
+.tbar.total{background:var(--a);opacity:.7}.tbar.done{background:var(--ok)}
+.tbar-lbl{font-size:9px;color:var(--sub);text-align:center;margin-top:3px;white-space:nowrap}
+.trend-legend{display:flex;gap:12px;margin-top:6px;font-size:11px;color:var(--sub)}
+.trend-legend span{display:flex;align-items:center;gap:4px}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+
+/* SEARCH */
+.sw{position:relative;flex:1;min-width:130px}
+.sw input{width:100%;padding:9px 12px 9px 30px;border:1.5px solid var(--bdr);border-radius:var(--rs);font-size:13px;background:var(--inp);outline:none;transition:.2s}
+.sw input:focus{border-color:var(--a);background:#fff}
+.sw::before{content:'🔍';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none}
+.fsel{padding:8px 10px;border:1.5px solid var(--bdr);border-radius:var(--rs);font-size:12px;background:var(--inp);outline:none;cursor:pointer}
+.fsel:focus{border-color:var(--a)}
+
+/* TABLE */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:460px;table-layout: auto;}
+thead tr{background:var(--bg)}
+th{padding:9px 10px;text-align:left;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.7px;border-bottom:2px solid var(--bdr);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--bdr);vertical-align:middle;word-break:break-word}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f8fafc}
+.acts{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+
+/* EXPAND ROW — overflow visible so content shows */
+.exp-row td{padding:0;border-bottom:2px solid var(--a);height:auto;overflow:visible;}
+.exp-box{padding:14px;background:linear-gradient(135deg,#f0f6ff,#fff);animation:fi .2s;overflow:visible}
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.exp-f{background:#fff;border-radius:var(--rs);padding:10px 12px;box-shadow:var(--sh)}
+.exp-f label{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+.exp-f p{font-size:13px;font-weight:600;color:var(--txt);word-break:break-word;white-space:pre-wrap}
+.img-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;overflow:visible}
+.img-wrap{display:flex;flex-direction:column;align-items:center}
+.img-thumb{width:100px;height:80px;border-radius:var(--rs);object-fit:cover;border:2px solid var(--bdr);cursor:pointer;transition:.2s;display:block}
+.img-thumb:hover{border-color:var(--a);transform:scale(1.05)}
+.img-label{font-size:10px;color:var(--sub);text-align:center;margin-top:4px;font-weight:600}
+.img-ph{width:100px;height:80px;border-radius:var(--rs);background:var(--bg);border:2px dashed var(--bdr);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--bdr)}
+
+/* BADGES — sync NOT async */
+.b{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
+.bg{background:#dcf5e7;color:#166534}.br{background:#fde8e8;color:#991b1b}
+.by{background:#fef3dc;color:#92400e}.bb{background:#ddeeff;color:#1e40af}
+.bpu{background:#f0e6ff;color:#5b21b6}.bor{background:#fff0e6;color:#9a3412}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select,.fg textarea{padding:11px 13px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:14px;background:var(--inp);outline:none;transition:.2s;width:100%;color:var(--txt)}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--a);background:#fff;box-shadow:0 0 0 3px rgba(74,144,217,.1)}
+.fg textarea{resize:vertical;min-height:72px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+.full{grid-column:1/-1}
+
+/* PHOTO WIDGET */
+.photo-slot{border:2px dashed var(--bdr);border-radius:var(--rs);padding:10px;background:var(--inp);margin-bottom:8px;transition:.2s}
+.photo-slot:hover{border-color:var(--a)}
+.photo-slot-label{font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+.photo-preview{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.photo-preview img{width:70px;height:56px;object-fit:cover;border-radius:6px;border:2px solid var(--bdr);cursor:pointer}
+.ph-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cam-file{display:none}
+.ph-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;background:var(--a);color:#fff}
+.ph-btn.replace{background:var(--warn)}
+.ph-btn.remove{background:var(--err)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:4px;padding:9px 15px;border:none;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:active{transform:scale(.94)}
+.btn-p{background:var(--a);color:#fff}.btn-p:hover{background:var(--a2)}
+.btn-ok{background:var(--ok);color:#fff}.btn-w{background:var(--warn);color:#fff}
+.btn-e{background:var(--err);color:#fff}.btn-g{background:var(--bg);color:var(--txt);border:1.5px solid var(--bdr)}
+.btn-pur{background:var(--pur);color:#fff}.btn-sm{padding:5px 9px;font-size:11px;border-radius:6px}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(4px);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.ov.open{display:flex;animation:fi .15s}
+@media(min-width:600px){.ov{align-items:center;padding:20px}}
+.modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:620px;max-height:93vh;overflow-y:auto;box-shadow:var(--sh2);animation:su .2s}
+@media(min-width:600px){.modal{border-radius:var(--r);animation:fi .15s}}
+@keyframes su{from{transform:translateY(100%)}to{transform:none}}
+.mdrag{width:40px;height:4px;background:var(--bdr);border-radius:4px;margin:12px auto 0}
+.mh{padding:15px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bdr);position:sticky;top:0;background:#fff;z-index:1}
+.mh h3{font-size:15px;font-weight:800;color:var(--p)}
+.mx{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sub)}
+.mb{padding:18px}
+.mf{padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;z-index:1}
+
+/* COLLAB TAGS */
+.tag-box{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--inp);min-height:44px;align-items:center;transition:.2s}
+.tag-box:focus-within{border-color:var(--a);background:#fff}
+.tag{background:var(--a);color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px}
+.tag button{background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1}
+
+/* PAGINATION */
+.pgn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 0;flex-wrap:wrap}
+.pgn-btn{padding:6px 14px;border:1.5px solid var(--bdr);border-radius:var(--rs);background:#fff;font-size:12px;font-weight:700;cursor:pointer;color:var(--txt);transition:.15s}
+.pgn-btn:hover{border-color:var(--a);color:var(--a)}
+.pgn-btn.active{background:var(--a);color:#fff;border-color:var(--a)}
+.pgn-btn:disabled{opacity:.4;cursor:not-allowed}
+.pgn-info{font-size:12px;color:var(--sub)}
+
+/* MATERIAL SEARCH */
+.mat-search{position:relative}
+.mat-drop{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--a);border-radius:var(--rs);max-height:300px;overflow-y:auto;z-index:50;box-shadow:var(--sh2);display:none}
+.mat-drop.open{display:block}
+.mat-opt{padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--bdr)}
+.mat-opt:hover{background:var(--bg)}
+.mat-opt:last-child{border-bottom:none}
+
+/* REPORT */
+.rpt-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.rpt-row .fg{min-width:120px;flex:1}
+
+/* TOAST */
+#toast{position:fixed;bottom:calc(var(--bot)+10px);left:50%;transform:translateX(-50%);padding:11px 20px;border-radius:24px;color:#fff;font-size:13px;font-weight:700;display:none;z-index:999;box-shadow:var(--sh2);white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+
+/* LIGHTBOX */
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:600;display:none;align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:10px}
+#lightbox.open{display:flex}
+#lbImg{max-width:95vw;max-height:88vh;border-radius:var(--r)}
+#lbCap{color:#fff;font-size:13px;opacity:.7}
+
+/* MISC */
+.empty{text-align:center;padding:28px;color:var(--sub);font-size:13px}
+.spin{text-align:center;padding:20px;color:var(--sub);font-size:13px}
+.sep{height:1px;background:var(--bdr);margin:14px 0}
+.slbl{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:block}
+.note{font-size:11px;color:var(--sub);margin-top:4px}
+.prow{display:flex;gap:7px;margin-bottom:7px;align-items:center;flex-wrap:wrap}
+.prow input{padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:12px;background:var(--inp);width:70px}
+@media(max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lbox">
+    <div class="llogo"><span class="lic">⚙️</span><h2>WELCOME TO SINVENA</h2><p>Sign in to continue</p></div>
+    <div class="lf">
+      <label>Username</label><input id="lU" placeholder="Username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <label>Password</label><input id="lP" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="lbtn" id="lBtn" onclick="doLogin()">Sign In →</button>
+    <div class="lerr" id="lErr"></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="mainNav">
+  <div class="nlogo">⚙️ SISTEM INVENTARISASI ALAT</div>
+  <div class="nright">
+    <div class="nav-user">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <div style="display:flex;flex-direction:column">
+        <span class="nav-name" id="navName"></span>
+        <span class="rpill" id="roleLabel"></span>
+      </div>
+    </div>
+    <button class="lout" onclick="doLogout()">Sign Out</button>
+  </div>
+</nav>
+
+<!-- TABS -->
+<div id="tabBar">
+  <div class="tab active" onclick="go('dashboard')">📊 Dashboard</div>
+  <div class="tab" onclick="go('equipment')">🏗️ Equipment</div>
+  <div class="tab" onclick="go('workorder')">📋 Work Orders</div>
+  <div class="tab" onclick="go('parts')">🔩 Parts</div>
+  <div class="tab" onclick="go('warehouse')">🏭 Warehouse</div>
+  <div class="tab" onclick="go('history')">📜 History</div>
+  <div class="tab" onclick="go('report')">📄 Reports</div>
+  <div class="tab" id="usersTab" onclick="go('users')" style="display:none">👤 Users</div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="stats" id="statsGrid"><div class="spin">Loading…</div></div>
+  <div class="dash-grid">
+    <div class="card"><div class="ch"><div class="ct">📈 WO Trend — Last 7 Days</div></div>
+      <div class="cb">
+        <div class="trend-wrap"><div class="trend-inner" id="trendBar"></div></div>
+        <div class="trend-legend">
+          <span><div class="legend-dot" style="background:var(--a);opacity:.7"></div>Total</span>
+          <span><div class="legend-dot" style="background:var(--ok)"></div>Done</span>
+        </div>
+      </div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct">🏆 Best Mechanic (Month)</div></div><div class="cb" id="dashMech"><div class="spin">Loading…</div></div></div>
+    <div class="card"><div class="ch"><div class="ct">🔩 Most Needed Parts (Month)</div></div><div class="cb" id="dashParts"><div class="spin">Loading…</div></div></div>
+    <div class="card"><div class="ch"><div class="ct">⚠️ Most WOs Equipment</div></div><div class="cb" id="dashWorst"><div class="spin">Loading…</div></div></div>
+    <div class="card"><div class="ch"><div class="ct">✅ Best Equipment</div></div><div class="cb" id="dashBest"><div class="spin">Loading…</div></div></div>
+    <div class="card"><div class="ch"><div class="ct">🏭 Low Warehouse Stock</div></div><div class="cb" id="dashLow"><div class="spin">Loading…</div></div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct">📋 Recent Work Orders</div></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>WO ID</th><th>Equipment</th><th>Mechanic</th><th>Activity</th><th>Status</th><th>Start</th><th>Done</th></tr></thead>
+        <tbody id="dashWo"><tr><td colspan="7" class="spin">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- EQUIPMENT -->
+<div class="page" id="page-equipment">
+  <div class="card">
+    <div class="ch"><div class="ct">🏗️ Equipment</div>
+      <div class="sw"><input placeholder="Search…" oninput="filt('eqTb',this.value)"/></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Name</th><th>Type</th><th>Brand/Model</th><th>Serial</th><th>Status</th><th></th></tr></thead>
+      <tbody id="eqTb"><tr><td colspan="6" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- WORK ORDERS -->
+<div class="page" id="page-workorder">
+  <div class="card">
+    <div class="ch"><div class="ct">📋 Work Orders</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select class="fsel" id="woFilter" onchange="woPage=1;renderWO()"><option value="">All Status</option>
+          <option>Open</option><option>In Progress</option><option>Pending Confirmation</option>
+          <option>Waiting for Sparepart</option><option>Done</option><option>Cancelled</option>
+        </select>
+        <input type="date" id="woFrom" class="fsel" onchange="woPage=1;renderWO()" title="From date"/>
+        <input type="date" id="woTo"   class="fsel" onchange="woPage=1;renderWO()" title="To date"/>
+        <div class="sw"><input id="woSearch" placeholder="Search…" oninput="woPage=1;renderWO()"/></div>
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>WO ID</th><th>Date</th><th>Equipment</th><th>Team</th><th>Activity</th><th>Priority</th><th>Status</th><th>Start</th><th>Done</th><th></th></tr></thead>
+      <tbody id="woTb"><tr><td colspan="10" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+    <div class="pgn" id="woPgn"></div>
+  </div>
+</div>
+
+<!-- PARTS -->
+<div class="page" id="page-parts">
+  <div class="card">
+    <div class="ch"><div class="ct">🔩 Spare Parts</div>
+      <div class="sw"><input placeholder="Search…" oninput="filt('ptTb',this.value)"/></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Name</th><th>Part No.</th><th>Equipment</th><th>Unit</th><th>Min Stock</th><th></th></tr></thead>
+      <tbody id="ptTb"><tr><td colspan="6" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- WAREHOUSE -->
+<div class="page" id="page-warehouse">
+  <div class="card">
+    <div class="ch">
+      <div class="ct">🏭 Warehouse Stock <span style="font-size:11px;font-weight:400;color:var(--sub)">(Mirror)</span></div>
+      <div class="sw"><input placeholder="Search…" oninput="filt('whTb',this.value)"/></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Material</th><th>Unit</th><th>Total Stock</th><th>Status</th></tr></thead>
+      <tbody id="whTb"><tr><td colspan="4" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+    <div style="padding:8px 14px;font-size:11px;color:var(--sub);border-top:1px solid var(--bdr)">
+      📡 Read-only mirror from external sheet.
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="page" id="page-history">
+  <div class="card">
+    <div class="ch"><div class="ct">📜 History</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select class="fsel" id="histEqF" onchange="loadHist()"><option value="">All Equipment</option></select>
+        <div class="sw"><input placeholder="Search…" oninput="filt('hiTb',this.value)"/></div>
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Date</th><th>Equipment</th><th>WO ID</th><th>Mechanic</th><th>Activity</th><th>Description</th></tr></thead>
+      <tbody id="hiTb"><tr><td colspan="6" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- REPORT -->
+<div class="page" id="page-report">
+  <div class="card">
+    <div class="ch"><div class="ct">📄 Reports</div></div>
+    <div class="cb">
+      <div class="rpt-row">
+        <div class="fg"><label>Type</label><select id="rptType" class="fsel" style="width:100%"><option value="wo">Work Orders</option><option value="eq">Equipment</option><option value="hist">History</option><option value="wh">Warehouse</option></select></div>
+        <div class="fg"><label>From</label><input id="rptFrom" type="date"/></div>
+        <div class="fg"><label>To</label><input id="rptTo" type="date"/></div>
+        <div class="fg"><label>Equipment</label><select id="rptEq" class="fsel" style="width:100%"><option value="">All</option></select></div>
+        <div class="fg"><label>Status</label><select id="rptSt" class="fsel" style="width:100%"><option value="">All</option><option>Open</option><option>In Progress</option><option>Done</option><option>Cancelled</option><option>Waiting for Sparepart</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn btn-p" onclick="genReport()">🔍 Preview</button>
+        <button class="btn btn-ok" onclick="exportPDF()">📥 PDF</button>
+        <button class="btn btn-w" onclick="exportExcel()">📊 Excel</button>
+      </div>
+      <div id="rptPreview"></div>
+    </div>
+  </div>
+</div>
+
+<!-- USERS -->
+<div class="page" id="page-users">
+  <div class="card">
+    <div class="ch"><div class="ct">👤 Users</div>
+      <div class="sw"><input placeholder="Search…" oninput="filt('usTb',this.value)"/></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Photo</th><th>Username</th><th>Full Name</th><th>Role</th><th>Active</th><th></th></tr></thead>
+      <tbody id="usTb"><tr><td colspan="6" class="spin">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div id="bottomNav">
+  <button class="bnav add" onclick="onAdd()"><span class="bi">➕</span>Add</button>
+  <button class="bnav edi" onclick="onEdit()"><span class="bi">✏️</span>Edit</button>
+  <button class="bnav del" onclick="onDel()"><span class="bi">🗑️</span>Delete</button>
+  <button class="bnav ref" onclick="onRefresh()"><span class="bi">🔄</span>Refresh</button>
+</div>
+
+<!-- MODAL: EQUIPMENT -->
+<div class="ov" id="mEq"><div class="modal">
+  <div class="mdrag"></div>
+  <div class="mh"><h3 id="mEqT">Add Equipment</h3><button class="mx" onclick="cm('mEq')">×</button></div>
+  <div class="mb">
+    <input type="hidden" id="eq-id"/>
+    <div class="fgrid">
+      <div class="fg full"><label>Name *</label><input id="eq-name" placeholder="e.g. Wheel Loader"/></div>
+      <div class="fg"><label>Type</label><select id="eq-type"><option>Heavy Machinery</option><option>Vehicle</option><option>Power Tool</option><option>Lifting Equipment</option><option>Generator</option><option>Other</option></select></div>
+      <div class="fg"><label>Brand</label><input id="eq-brand"/></div>
+      <div class="fg"><label>Model</label><input id="eq-model"/></div>
+      <div class="fg"><label>Serial No.</label><input id="eq-serial"/></div>
+      <div class="fg"><label>Year</label><input id="eq-year" type="number" placeholder="2024"/></div>
+      <div class="fg"><label>Location</label><input id="eq-loc"/></div>
+      <div class="fg"><label>Status</label><select id="eq-status"><option>Active</option><option>Maintenance</option><option>Waiting for Sparepart</option><option>Retired</option></select></div>
+      <div class="fg full"><label>Specifications</label><textarea id="eq-specs"></textarea></div>
+    </div>
+    <div class="sep"></div>
+    <span class="slbl">📷 Equipment Photos</span>
+    <div id="eqPhotoBox"></div>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mEq')">Cancel</button><button class="btn btn-p" onclick="submitEq()">💾 Save</button></div>
+</div></div>
+
+<!-- MODAL: WORK ORDER -->
+<div class="ov" id="mWO"><div class="modal">
+  <div class="mdrag"></div>
+  <div class="mh"><h3 id="mWOT">New Work Order</h3><button class="mx" onclick="cm('mWO')">×</button></div>
+  <div class="mb">
+    <input type="hidden" id="wo-id"/>
+    <div class="fgrid">
+      <div class="fg"><label>Equipment *</label><select id="wo-eq"><option value="">Select…</option></select></div>
+      <div class="fg"><label>Activity Type</label><select id="wo-type"><option>Preventive Maintenance</option><option>Corrective Repair</option><option>Inspection</option><option>Oil Change</option><option>Part Replacement</option><option>Other</option></select></div>
+      <div class="fg"><label>Priority</label><select id="wo-pri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+      <div class="fg full"><label>Description</label><textarea id="wo-desc"></textarea></div>
+    </div>
+    <div class="sep"></div>
+    <span class="slbl">👤 Primary Mechanic</span>
+    <div class="fg" style="margin-bottom:12px"><input id="wo-mech" readonly style="background:#f0f0f0;cursor:not-allowed"/></div>
+    <span class="slbl">👥 Collaborators</span>
+    <div class="tag-box" id="tagBox">
+      <select id="colSel" onchange="addCollab()" style="border:none;outline:none;background:transparent;font-size:13px;min-width:120px;flex:1;cursor:pointer">
+        <option value="">+ Add mechanic…</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <span class="slbl">🔩 Needed Spare Parts</span>
+    <div class="fg" style="margin-bottom:8px"><label>Part Names (comma separated)</label><input id="wo-parts" placeholder="e.g. Oil Filter, V-Belt"/></div>
+    <div class="fg" style="margin-bottom:8px"><label>Parts Description / Specification</label><textarea id="wo-partsDesc" style="min-height:60px"></textarea></div>
+    <span class="slbl">📷 Parts Photo</span>
+    <div id="woPartsPhotoBox"></div>
+    <div class="sep"></div>
+    <div id="partsSection">
+      <span class="slbl">🔩 Parts Used (from warehouse)</span>
+      <div id="puList"></div>
+      <button class="btn btn-w btn-sm" onclick="addPR()">+ Add Part Used</button>
+    </div>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mWO')">Cancel</button><button class="btn btn-p" onclick="submitWO()">💾 Save WO</button></div>
+</div></div>
+
+<!-- MODAL: WO STATUS -->
+<div class="ov" id="mWOSt"><div class="modal" style="max-width:380px">
+  <div class="mdrag"></div>
+  <div class="mh"><h3>Update Status</h3><button class="mx" onclick="cm('mWOSt')">×</button></div>
+  <div class="mb">
+    <div class="fg"><label>New Status</label><select id="woSt"><option>Open</option><option>In Progress</option><option>Pending Confirmation</option><option>Waiting for Sparepart</option><option>Cancelled</option></select></div>
+    <p class="note" style="margin-top:10px">ℹ️ "Pending Confirmation" sends to supervisor for final approval.</p>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mWOSt')">Cancel</button><button class="btn btn-ok" onclick="cfmWOSt()">✅ Update</button></div>
+</div></div>
+
+<!-- MODAL: CONFIRM DONE -->
+<div class="ov" id="mCfm"><div class="modal" style="max-width:380px">
+  <div class="mdrag"></div>
+  <div class="mh"><h3>✅ Confirm Work Done</h3><button class="mx" onclick="cm('mCfm')">×</button></div>
+  <div class="mb">
+    <p style="font-size:13px;color:var(--sub);margin-bottom:12px">Confirm completed? Equipment will return to <b>Active</b>.</p>
+    <div id="cfmInfo" style="background:var(--bg);padding:10px;border-radius:var(--rs);font-size:13px"></div>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mCfm')">Cancel</button><button class="btn btn-ok" onclick="doCfmDone()">✅ Confirm Done</button></div>
+</div></div>
+
+<!-- MODAL: PART -->
+<div class="ov" id="mPt"><div class="modal">
+  <div class="mdrag"></div>
+  <div class="mh"><h3 id="mPtT">Add Spare Part</h3><button class="mx" onclick="cm('mPt')">×</button></div>
+  <div class="mb">
+    <input type="hidden" id="pt-id"/>
+    <div class="fgrid">
+      <div class="fg full"><label>Part Name *</label><input id="pt-name" placeholder="e.g. Oil Filter"/></div>
+      <div class="fg"><label>Part No.</label><input id="pt-no"/></div>
+      <div class="fg"><label>Equipment</label><select id="pt-eq"><option value="General">General / All</option></select></div>
+      <div class="fg"><label>Unit</label><select id="pt-unt"><option>pcs</option><option>liter</option><option>kg</option><option>meter</option><option>set</option><option>box</option></select></div>
+      <div class="fg"><label>Min Stock</label><input id="pt-min" type="number" placeholder="5" min="0"/></div>
+      <div class="fg full"><label>Specifications</label><textarea id="pt-specs"></textarea></div>
+    </div>
+    <div class="sep"></div>
+    <span class="slbl">📷 Part Photos</span>
+    <div id="ptPhotoBox"></div>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mPt')">Cancel</button><button class="btn btn-p" onclick="submitPt()">💾 Save</button></div>
+</div></div>
+
+<!-- MODAL: USER -->
+<div class="ov" id="mUs"><div class="modal" style="max-width:440px">
+  <div class="mdrag"></div>
+  <div class="mh"><h3 id="mUsT">Add User</h3><button class="mx" onclick="cm('mUs')">×</button></div>
+  <div class="mb">
+    <div class="fgrid">
+      <div class="fg"><label>Username *</label><input id="u-un" placeholder="username"/></div>
+      <div class="fg"><label>Password *</label><input id="u-pw" type="password"/></div>
+      <div class="fg full"><label>Full Name</label><input id="u-fn"/></div>
+      <div class="fg"><label>Role</label><select id="u-rl"><option value="mechanic">🔧 Mechanic</option><option value="supervisor">👷 Supervisor</option><option value="manager">📊 Manager</option></select></div>
+      <div class="fg"><label>Active</label><select id="u-ac"><option value="true">✅ Yes</option><option value="false">❌ No</option></select></div>
+    </div>
+    <div class="sep"></div>
+    <span class="slbl">📷 Profile Photo</span>
+    <div id="userPhotoBox"></div>
+    <input type="hidden" id="u-photo"/>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mUs')">Cancel</button><button class="btn btn-p" onclick="submitUs()">💾 Save</button></div>
+</div></div>
+
+<!-- MODAL: DELETE -->
+<div class="ov" id="mDel"><div class="modal" style="max-width:360px">
+  <div class="mdrag"></div>
+  <div class="mb" style="text-align:center;padding:28px 24px">
+    <div style="font-size:52px;margin-bottom:12px">🗑️</div>
+    <h3 style="color:var(--p);margin-bottom:8px">Delete Record?</h3>
+    <p id="delMsg" style="color:var(--sub);font-size:13px;line-height:1.5"></p>
+  </div>
+  <div class="mf"><button class="btn btn-g" onclick="cm('mDel')">Cancel</button><button class="btn btn-e" onclick="cfmDel()">🗑️ Delete</button></div>
+</div></div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="this.classList.remove('open')">
+  <img id="lbImg" src="" alt=""/><span id="lbCap"></span>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+const API = "https://script.google.com/macros/s/AKfycbwzCCB2szn1H8dus3N82QHN394baM6hUgEEumb06qOei0QG2RNLoDEoSjAD9QfiQD2Y/exec";
+
+// ══════════════════════════════════════════════════════════════
+// UTILS — ALL SYNCHRONOUS (no async on helpers)
+const $   = id => document.getElementById(id);
+const $$  = s  => document.querySelectorAll(s);
+const gv  = id => $(id)?.value?.trim() || "";
+const sv  = (id,v) => { const e=$(id); if(e) e.value = v ?? ""; };
+const sv2 = (id,h) => { const e=$(id); if(e) e.innerHTML = h; };
+const hide= id => { const e=$(id); if(e) e.style.display="none"; };
+const show= (id,d="block") => { const e=$(id); if(e) e.style.display=d; };
+const lerr= m  => $("lErr").textContent = m;
+const fd  = s  => (s && String(s).length > 3) ? String(s).slice(0,16) : "—";
+const en  = id => EQ.find(x => x.EquipmentID === id)?.Name || (id || "—");
+const J   = o  => JSON.stringify(o).replace(/'/g,"&#39;");
+const er  = (c,m) => `<tr><td colspan="${c}" class="empty">${m}</td></tr>`;
+
+// SYNC badge helpers — NO async
+function sb(s){
+  const m={"Active":"bg","Done":"bg","In Progress":"bb","Open":"by","Pending Confirmation":"bpu","Waiting for Sparepart":"bor","Maintenance":"by","Retired":"br","Cancelled":"br"};
+  return `<span class="b ${m[s]||"bb"}">${s||"—"}</span>`;
+}
+function pb(p){ const m={Normal:"bb",High:"by",Urgent:"br"}; return `<span class="b ${m[p]||"bb"}">${p||"Normal"}</span>`; }
+function rb(r){ const m={manager:"bg",supervisor:"bb",mechanic:"by"}; return `<span class="b ${m[r]||"bb"}">${r||"—"}</span>`; }
+
+// SYNC image helper — NO async
+function imgT(url, label, size=95){
+  const h = Math.round(size * 0.8);
+  if(!url || url==="undefined" || url==="null" || url===""){
+    return `<div class="img-wrap"><div class="img-ph" style="width:${size}px;height:${h}px">📷</div><div class="img-label">${label}</div></div>`;
+  }
+  // Fix Google Drive URL to always use lh3 thumbnail format
+  const fixedUrl = fixDriveUrl(url);
+  return `<div class="img-wrap"><img class="img-thumb" src="${fixedUrl}" style="width:${size}px;height:${h}px" alt="${label}" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='flex')" onclick="lb('${fixedUrl}','${label}')"/><div class="img-label">${label}</div></div>`;
+}
+
+function fixDriveUrl(url){
+  if(!url) return url;
+  // Already lh3 format
+  if(url.includes("lh3.googleusercontent.com")) return url;
+  // uc?id= format → convert
+  const m = url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  if(m) return "https://lh3.googleusercontent.com/d/" + m[1];
+  // /d/FILE_ID/ format
+  const m2 = url.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if(m2) return "https://lh3.googleusercontent.com/d/" + m2[1];
+  return url;
+}
+
+function filt(tbId, q){
+  $$(`.exp-row`).forEach(r => r.style.display="none");
+  document.getElementById(tbId).querySelectorAll("tr").forEach(r=>{
+    if(r.classList.contains("exp-row")){ r.style.display="none"; return; }
+    r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? "" : "none";
+  });
+}
+
+function toast(msg, type="ok"){
+  const t=$("toast"), bg={ok:"#27ae60",err:"#e74c3c",warn:"#f39c12",info:"#4a90d9"};
+  t.textContent=msg; t.style.background=bg[type]||bg.ok; t.style.display="block";
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.display="none",3500);
+}
+
+function lb(url,cap=""){
+  $("lbImg").src=fixDriveUrl(url); $("lbCap").textContent=cap||""; $("lightbox").classList.add("open");
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+let S=null, EQ=[], PT=[], WO=[], WH=[], MECHS=[], collabs=[];
+let curPage="dashboard", editId=null, delTgt=null, woStTgt=null, cfmWOId=null;
+let rptData=[], rptCols=[];
+let woPage=1; const WO_PER_PAGE=15;
+// photos[ctx][key] = {url, base64, mimeType, filename, fileId, _new}
+let photos={eq:{},pt:{},woparts:{},user:{}};
+
+// ══════════════════════════════════════════════════════════════
+// API
+const GET  = async(a,p={}) => { try{ return await(await fetch(`${API}?${new URLSearchParams({action:a,...p})}`)).json(); }catch(e){return{error:e.message}} };
+const POST = async(a,d)    => { try{ return await(await fetch(API,{method:"POST",body:JSON.stringify({action:a,data:d})})).json(); }catch(e){return{error:e.message}} };
+
+// ══════════════════════════════════════════════════════════════
+// AUTH
+async function doLogin(){
+  const u=gv("lU"), p=gv("lP");
+  if(!u||!p){lerr("Enter username and password");return}
+  const btn=$("lBtn"); btn.textContent="Signing in…"; btn.disabled=true; $("lErr").textContent="";
+  const r=await POST("login",{username:u,password:p});
+  if(r.success){
+    S=r; hide("loginScreen");
+    show("mainNav","flex"); show("tabBar","flex"); show("bottomNav","flex");
+    $("navName").textContent=S.fullName||S.username;
+    $("roleLabel").textContent=S.role==="mechanic"?"🔧 Mechanic":S.role==="supervisor"?"👷 Supervisor":"📊 Manager";
+    const av=$("navAvatar");
+    if(S.photo){ av.innerHTML=`<img src="${fixDriveUrl(S.photo)}" alt=""/>`; }
+    else { av.textContent=(S.fullName||S.username).charAt(0).toUpperCase(); }
+    if(S.role==="manager") show("usersTab","inline-flex");
+    MECHS=await GET("getMechanics"); if(!Array.isArray(MECHS)) MECHS=[];
+    await loadAll();
+  } else lerr(r.error||"Login failed");
+  btn.textContent="Sign In →"; btn.disabled=false;
+}
+function doLogout(){
+  S=null; show("loginScreen","flex"); ["mainNav","tabBar","bottomNav"].forEach(hide);
+  sv("lU",""); sv("lP","");
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAV
+function go(pg){
+  curPage=pg; editId=null;
+  $$(".page").forEach(p=>p.classList.remove("active"));
+  $$(".tab").forEach(t=>t.classList.remove("active"));
+  $("page-"+pg).classList.add("active");
+  const idx={dashboard:0,equipment:1,workorder:2,parts:3,warehouse:4,history:5,report:6,users:7};
+  const tabs=$$(".tab");
+  if(tabs[idx[pg]]){ tabs[idx[pg]].classList.add("active"); tabs[idx[pg]].scrollIntoView({block:"nearest",inline:"center"}); }
+}
+
+async function loadAll(){
+  await Promise.all([loadEQ(),loadPT(),loadWO(),loadWH()]);
+  await Promise.all([loadDash(),loadHist()]);
+  if(S?.role==="manager"||S?.role==="supervisor") loadUs();
+  popRptSel();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD
+async function loadDash(){
+  const d=await GET("getDashboard");
+  if(d.error){$("statsGrid").innerHTML=`<div class="empty">Error: ${d.error}</div>`;return}
+
+  $("statsGrid").innerHTML=`
+    <div class="stat"><div class="num">${d.totalEquipment}</div><div class="lbl">Equipment</div></div>
+    <div class="stat ok"><div class="num">${d.activeEquipment}</div><div class="lbl">Active</div></div>
+    <div class="stat warn"><div class="num">${d.maintenance}</div><div class="lbl">Maintenance</div></div>
+    <div class="stat pur"><div class="num">${d.waitingSparepart}</div><div class="lbl">Wait Sparepart</div></div>
+    <div class="stat warn"><div class="num">${d.openWO}</div><div class="lbl">Open WOs</div></div>
+    <div class="stat pur"><div class="num">${d.inProgressWO}</div><div class="lbl">In Progress</div></div>
+    <div class="stat err"><div class="num">${d.pendingWO}</div><div class="lbl">Pending Cfm</div></div>
+    <div class="stat ok"><div class="num">${d.doneWO}</div><div class="lbl">Done WOs</div></div>
+    <div class="stat err"><div class="num">${d.lowStock}</div><div class="lbl">Low Stock</div></div>`;
+
+  const trend=d.trend||[];
+  const maxV=Math.max(...trend.map(t=>Math.max(t.total||0,t.done||0)),1);
+  $("trendBar").innerHTML=trend.map(t=>{
+    const th=Math.max(3,Math.round(((t.total||0)/maxV)*68));
+    const dh=Math.max(0,Math.round(((t.done||0)/maxV)*68));
+    return`<div class="tbar-group">
+      <div class="tbar-bars">
+        <div class="tbar total" style="height:${th}px" title="${t.date}: ${t.total} total"></div>
+        <div class="tbar done"  style="height:${dh}px"  title="${t.date}: ${t.done} done"></div>
+      </div>
+      <div class="tbar-lbl">${t.date.slice(5)}</div>
+    </div>`;
+  }).join("");
+
+  const medal=i=>["gold","silver","bronze"][i]||"";
+  const rk=(arr,vFn,sFn)=>arr.length?arr.map((x,i)=>`
+    <div class="rank-item">
+      <div class="rank-no ${medal(i)}">${i+1}</div>
+      <div class="rank-info"><div class="rank-name">${x.name}</div><div class="rank-sub">${sFn(x)}</div></div>
+      <div class="rank-val">${vFn(x)}</div>
+    </div>`).join(""):`<div class="empty">No data this month</div>`;
+
+  $("dashMech").innerHTML=rk(d.bestMechanic||[],x=>`${x.done} ✅`,x=>`${x.total} WOs · avg ${x.avgMin||"—"} min`);
+  $("dashParts").innerHTML=rk(d.topParts||[],x=>`${x.count}×`,x=>`Needed this month`);
+  $("dashWorst").innerHTML=rk(d.worstEq||[],x=>`${x.woCount} WOs`,x=>sb(x.status));
+  $("dashBest").innerHTML=rk(d.bestEq||[],x=>`${x.woCount} WOs`,x=>`Active`);
+  $("dashLow").innerHTML=(d.lowWH||[]).length?d.lowWH.map(w=>`
+    <div class="rank-item">
+      <div class="rank-no" style="background:#fde8e8;color:var(--err)">⚠</div>
+      <div class="rank-info"><div class="rank-name">${w.name}</div></div>
+      <div class="rank-val" style="color:var(--err)">${w.stock} ${w.unit}</div>
+    </div>`).join(""):`<div class="empty">✅ All stocked</div>`;
+
+  $("dashWo").innerHTML=WO.length?[...WO].reverse().slice(0,8).map(w=>`<tr>
+    <td><b>${w.WOID}</b></td><td>${en(w.EquipmentID)}</td><td>${w.Mechanic}</td>
+    <td>${w.ActivityType}</td><td>${sb(w.Status)}</td><td>${fd(w.StartTime)}</td><td>${fd(w.DoneTime)}</td>
+  </tr>`).join(""):`<tr><td colspan="7" class="empty">No work orders</td></tr>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// EQUIPMENT
+async function loadEQ(){
+  EQ=await GET("getEquipment"); if(!Array.isArray(EQ)) EQ=[];
+  const can=S?.role!=="mechanic";
+  const tb=$("eqTb");
+  if(!EQ.length){tb.innerHTML=er(6,"No equipment yet");return}
+  tb.innerHTML=EQ.map(e=>`
+    <tr id="eq-r-${e.EquipmentID}">
+      <td><b>${e.Name}</b><br><small style="color:var(--sub)">${e.EquipmentID}</small></td>
+      <td>${e.Type}</td>
+      <td>${e.Brand||"—"}<br><small style="color:var(--sub)">${e.Model||"—"}</small></td>
+      <td>${e.SerialNo||"—"}</td>
+      <td>${sb(e.Status)}</td>
+      <td class="acts">
+        <button class="btn btn-p btn-sm" onclick="togExp('eq','${e.EquipmentID}')">🔍</button>
+        <button class="btn btn-g btn-sm" onclick="dlEqPDF('${e.EquipmentID}')">📥 PDF</button>
+        ${can?`<button class="btn btn-w btn-sm" onclick='eqEdit(${J(e)})'>✏️</button>
+        <button class="btn btn-e btn-sm" onclick="askDel('deleteEquipment','${e.EquipmentID}','${e.Name}')">🗑️</button>`:""}
+      </td>
+    </tr>
+    <tr id="eq-x-${e.EquipmentID}" style="display:none" class="exp-row">
+      <td colspan="6"><div class="exp-box">
+        <div class="exp-grid">
+          <div class="exp-f"><label>Location</label><p>${e.Location||"—"}</p></div>
+          <div class="exp-f"><label>Year</label><p>${e.Year||"—"}</p></div>
+          <div class="exp-f"><label>Serial No.</label><p>${e.SerialNo||"—"}</p></div>
+          <div class="exp-f"><label>Status</label><p>${sb(e.Status)}</p></div>
+          <div class="exp-f full"><label>Specifications</label><p>${e.Specs||"—"}</p></div>
+        </div>
+        <span class="slbl">📷 Equipment Photos</span>
+        <div class="img-row">${imgT(e.ImgFront,"Front")}${imgT(e.ImgSide,"Side")}${imgT(e.ImgIso,"Isometric")}</div>
+        <div class="sep"></div>
+        <span class="slbl">🔩 Associated Spare Parts</span>
+        <div style="overflow:visible">
+          ${PT.filter(p=>p.EquipmentID===e.EquipmentID).map(p=>`
+            <div class="rank-item">
+              <div class="rank-info">
+                <div class="rank-name">${p.Name} <span style="color:var(--sub);font-size:11px">${p.PartNo||""}</span></div>
+                <div class="rank-sub">${p.Specs||""}</div>
+              </div>
+              <div style="display:flex;gap:6px">${imgT(p.ImgFront,"F",50)}${imgT(p.ImgSide,"S",50)}</div>
+            </div>`).join("")||"<p style='color:var(--sub);font-size:12px;padding:8px 0'>No parts linked</p>"}
+        </div>
+      </div></td>
+    </tr>`).join("");
+  popSel();
+}
+
+function eqEdit(e){
+  editId=e.EquipmentID;
+  ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs"]
+    .forEach((id,i)=>sv(id,[e.EquipmentID,e.Name,e.Brand,e.Model,e.SerialNo,e.Year,e.Location,e.Specs][i]));
+  sv("eq-type",e.Type); sv("eq-status",e.Status);
+  photos.eq={front:{url:e.ImgFront||""},side:{url:e.ImgSide||""},iso:{url:e.ImgIso||""}};
+  renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]);
+  $("mEqT").textContent="✏️ Edit Equipment"; om("mEq");
+}
+
+async function submitEq(){
+  const d={name:gv("eq-name"),type:gv("eq-type"),brand:gv("eq-brand"),model:gv("eq-model"),
+    serialNo:gv("eq-serial"),year:gv("eq-year"),location:gv("eq-loc"),status:gv("eq-status"),specs:gv("eq-specs")};
+  if(!d.name){toast("Equipment name required","warn");return}
+  toast("Saving…","info");
+  d.imgFront=await uploadSlot(photos.eq,"front")||"";
+  d.imgSide =await uploadSlot(photos.eq,"side")||"";
+  d.imgIso  =await uploadSlot(photos.eq,"iso")||"";
+  const r=editId?await POST("editEquipment",{...d,id:editId}):await POST("addEquipment",d);
+  if(r.success){toast(editId?"✅ Updated!":"✅ Added!");cm("mEq");photos.eq={};await loadEQ();loadDash();}
+  else toast("Error: "+r.error,"err");
+}
+
+async function dlEqPDF(eqId){
+  const e=EQ.find(x=>x.EquipmentID===eqId); if(!e) return;
+  const parts=PT.filter(p=>p.EquipmentID===eqId);
+  const wos=WO.filter(w=>w.EquipmentID===eqId);
+  const {jsPDF}=window.jspdf; const doc=new jsPDF();
+  let y=15;
+  doc.setFontSize(18);doc.setFont(undefined,"bold");doc.text("Equipment Report",14,y);y+=8;
+  doc.setFontSize(10);doc.setFont(undefined,"normal");doc.text(`Generated: ${new Date().toLocaleString()}`,14,y);y+=10;
+  doc.autoTable({startY:y,head:[["Field","Value"]],
+    body:[["Name",e.Name],["Type",e.Type],["Brand",e.Brand||""],["Model",e.Model||""],["Serial",e.SerialNo||""],["Year",e.Year||""],["Location",e.Location||""],["Status",e.Status],["Specs",e.Specs||""]],
+    styles:{fontSize:9},headStyles:{fillColor:[30,58,95]},columnStyles:{0:{fontStyle:"bold",cellWidth:40}}});
+  y=doc.lastAutoTable.finalY+10;
+  if(parts.length){
+    doc.setFontSize(12);doc.setFont(undefined,"bold");doc.text("Spare Parts",14,y);y+=5;
+    doc.autoTable({startY:y,head:[["Name","Part No.","Unit","Min Stock","Specs"]],
+      body:parts.map(p=>[p.Name,p.PartNo||"",p.Unit,p.MinStock,p.Specs||""]),
+      styles:{fontSize:8},headStyles:{fillColor:[30,58,95]}});
+    y=doc.lastAutoTable.finalY+10;
+  }
+  if(wos.length){
+    doc.setFontSize(12);doc.setFont(undefined,"bold");doc.text("Work Order History",14,y);y+=5;
+    doc.autoTable({startY:y,head:[["WO ID","Date","Mechanic","Activity","Status","Start","Done"]],
+      body:wos.map(w=>[w.WOID,fd(w.Date),w.Mechanic,w.ActivityType,w.Status,fd(w.StartTime),fd(w.DoneTime)]),
+      styles:{fontSize:8},headStyles:{fillColor:[30,58,95]}});
+  }
+  doc.save(`Equipment_${e.Name.replace(/\s+/g,"_")}.pdf`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// WORK ORDERS — with pagination + date filter
+async function loadWO(){
+  WO=await GET("getWorkOrders"); if(!Array.isArray(WO)) WO=[];
+  woPage=1; renderWO();
+}
+
+function renderWO(){
+  const filter=gv("woFilter"), search=gv("woSearch");
+  const from=gv("woFrom"), to=gv("woTo");
+  const isSup=S?.role==="supervisor"||S?.role==="manager";
+  const can=S?.role!=="mechanic";
+  const myName=S?.fullName||S?.username||"";
+
+  let data=[...WO].reverse();
+  if(filter) data=data.filter(w=>w.Status===filter);
+  if(from)   data=data.filter(w=>w.Date&&String(w.Date).slice(0,10)>=from);
+  if(to)     data=data.filter(w=>w.Date&&String(w.Date).slice(0,10)<=to);
+  if(search){ const q=search.toLowerCase(); data=data.filter(w=>JSON.stringify(w).toLowerCase().includes(q)); }
+
+  const total=data.length, pages=Math.max(1,Math.ceil(total/WO_PER_PAGE));
+  if(woPage>pages) woPage=pages;
+  const slice=data.slice((woPage-1)*WO_PER_PAGE, woPage*WO_PER_PAGE);
+
+  const tb=$("woTb");
+  if(!slice.length){tb.innerHTML=er(10,"No work orders match filters");buildPgn(0,0,0);return}
+
+  tb.innerHTML=slice.map(w=>{
+    const team=[w.Mechanic,...(w.Collaborators?w.Collaborators.split(","):[])].map(n=>String(n).trim()).filter(Boolean);
+    const isMine=team.some(n=>n.toLowerCase()===myName.toLowerCase());
+    const colTxt=w.Collaborators?`<br><small style="color:var(--sub)">+${w.Collaborators}</small>`:"";
+    return`
+    <tr id="wo-r-${w.WOID}">
+      <td><b>${w.WOID}</b></td><td>${fd(w.Date)}</td><td>${en(w.EquipmentID)}</td>
+      <td>${w.Mechanic}${colTxt}</td><td>${w.ActivityType}</td>
+      <td>${pb(w.Priority)}</td><td>${sb(w.Status)}</td>
+      <td>${fd(w.StartTime)}</td><td>${fd(w.DoneTime)}</td>
+      <td class="acts">
+        <button class="btn btn-p btn-sm" onclick="togExp('wo','${w.WOID}')">🔍</button>
+        ${(isMine||can)?`<button class="btn btn-ok btn-sm" onclick="openWOSt('${w.WOID}','${w.Status}')">🔄</button>`:""}
+        ${isSup&&w.Status==="Pending Confirmation"?`<button class="btn btn-pur btn-sm" onclick="openCfm('${w.WOID}',\`${w.Mechanic}\`,\`${en(w.EquipmentID)}\`)">✅</button>`:""}
+        ${can?`<button class="btn btn-w btn-sm" onclick='woEdit(${J(w)})'>✏️</button>
+        <button class="btn btn-e btn-sm" onclick="askDel('deleteWorkOrder','${w.WOID}','WO ${w.WOID}')">🗑️</button>`:""}
+      </td>
+    </tr>
+    <tr id="wo-x-${w.WOID}" style="display:none" class="exp-row">
+      <td colspan="10"><div class="exp-box">
+        <div class="exp-grid">
+          <div class="exp-f"><label>Equipment</label><p>${en(w.EquipmentID)}</p></div>
+          <div class="exp-f"><label>Activity</label><p>${w.ActivityType}</p></div>
+          <div class="exp-f"><label>Priority</label><p>${pb(w.Priority)}</p></div>
+          <div class="exp-f"><label>Status</label><p>${sb(w.Status)}</p></div>
+          <div class="exp-f"><label>Start Time</label><p>${w.StartTime||"—"}</p></div>
+          <div class="exp-f"><label>Done Time</label><p>${w.DoneTime||"—"}</p></div>
+          <div class="exp-f"><label>Confirmed By</label><p>${w.ConfirmedBy||"—"}</p></div>
+          <div class="exp-f"><label>Confirmed At</label><p>${w.ConfirmedAt||"—"}</p></div>
+          <div class="exp-f full"><label>Team</label><p>${w.Mechanic}${w.Collaborators?" + "+w.Collaborators:""}</p></div>
+          <div class="exp-f full"><label>Description</label><p>${w.Description||"—"}</p></div>
+          <div class="exp-f full"><label>Needed Parts</label><p>${w.NeededParts||"—"}</p></div>
+          <div class="exp-f full"><label>Parts Spec</label><p>${w.NeededPartsDesc||"—"}</p></div>
+        </div>
+        ${(w.NeededPartsImg&&w.NeededPartsImg!=="undefined"&&w.NeededPartsImg!=="")?
+          `<span class="slbl">📷 Parts Photo</span><div class="img-row">${imgT(w.NeededPartsImg,"Parts")}</div>`:""
+        }
+      </div></td>
+    </tr>`;
+  }).join("");
+  buildPgn(woPage, pages, total);
+}
+
+function buildPgn(page, pages, total){
+  const el=$("woPgn"); if(!el) return;
+  if(pages<=1&&total===0){el.innerHTML="";return}
+  let h=`<span class="pgn-info">${total} records</span>`;
+  h+=`<button class="pgn-btn" onclick="woPage=1;renderWO()" ${page<=1?"disabled":""}>«</button>`;
+  h+=`<button class="pgn-btn" onclick="woPage--;renderWO()" ${page<=1?"disabled":""}>‹ Prev</button>`;
+  const start=Math.max(1,page-2), end=Math.min(pages,page+2);
+  for(let i=start;i<=end;i++) h+=`<button class="pgn-btn ${i===page?"active":""}" onclick="woPage=${i};renderWO()">${i}</button>`;
+  h+=`<button class="pgn-btn" onclick="woPage++;renderWO()" ${page>=pages?"disabled":""}>Next ›</button>`;
+  h+=`<button class="pgn-btn" onclick="woPage=${pages};renderWO()" ${page>=pages?"disabled":""}>»</button>`;
+  el.innerHTML=h;
+}
+
+function woEdit(w){
+  editId=w.WOID;
+  sv("wo-id",w.WOID); sv("wo-eq",w.EquipmentID); sv("wo-mech",w.Mechanic);
+  sv("wo-type",w.ActivityType); sv("wo-pri",w.Priority); sv("wo-desc",w.Description);
+  sv("wo-parts",w.NeededParts||""); sv("wo-partsDesc",w.NeededPartsDesc||"");
+  photos.woparts={front:{url:w.NeededPartsImg||""}};
+  renderPhotoSlots("woPartsPhotoBox","woparts",["Parts Photo"]);
+  collabs=(w.Collaborators?w.Collaborators.split(",").map(s=>s.trim()).filter(Boolean):[]);
+  renderTags();
+  $("partsSection").style.display="none";
+  $("mWOT").textContent="✏️ Edit WO"; om("mWO");
+}
+
+async function submitWO(){
+  const d={equipmentId:gv("wo-eq"),mechanic:gv("wo-mech"),activityType:gv("wo-type"),
+    description:gv("wo-desc"),priority:gv("wo-pri"),neededParts:gv("wo-parts"),
+    neededPartsDesc:gv("wo-partsDesc"),collaborators:collabs.join(",")};
+  if(!d.equipmentId||!d.mechanic){toast("Equipment required","warn");return}
+  toast("Saving…","info");
+  d.neededPartsImg=await uploadSlot(photos.woparts,"front")||"";
+  const r=editId?await POST("editWorkOrder",{...d,id:editId}):await POST("addWorkOrder",d);
+  if(r.success){
+    if(!editId){
+      for(const row of $$(".prow")){
+        const matEl=row.querySelector(".pu-mat"), qEl=row.querySelector(".pu-q");
+        if(matEl&&qEl&&matEl.value&&qEl.value)
+          await POST("addPartsUsed",{woId:r.id,partId:matEl.value,qty:qEl.value});
+      }
+    }
+    toast(editId?"✅ WO updated!":"✅ WO submitted!"); cm("mWO"); collabs=[]; photos.woparts={};
+    await loadWO(); loadDash();
+  } else toast("Error: "+r.error,"err");
+}
+
+function openWOSt(id,cur){woStTgt=id; sv("woSt",cur); om("mWOSt")}
+async function cfmWOSt(){
+  const r=await POST("updateWOStatus",{woId:woStTgt,status:gv("woSt")});
+  if(r.success){toast("✅ Status updated!"); cm("mWOSt"); await loadWO(); loadDash(); loadEQ();}
+  else toast("Error: "+r.error,"err");
+}
+
+function openCfm(id,mech,eqn){
+  cfmWOId=id;
+  $("cfmInfo").innerHTML=`<b>WO:</b> ${id}<br><b>Mechanic:</b> ${mech}<br><b>Equipment:</b> ${eqn}`;
+  om("mCfm");
+}
+async function doCfmDone(){
+  const r=await POST("confirmWODone",{woId:cfmWOId,confirmedBy:S.fullName||S.username});
+  if(r.success){toast("✅ Confirmed done!"); cm("mCfm"); await loadWO(); loadDash(); loadEQ();}
+  else toast("Error: "+r.error,"err");
+}
+
+// Parts Used with searchable material dropdown
+function addPR(){
+  const id="pu-"+Date.now();
+  const d=document.createElement("div"); d.className="prow"; d.id=id;
+  d.innerHTML=`
+    <div class="mat-search" style="flex:2">
+      <input class="pu-mat-inp" placeholder="Search material…" oninput="matSearch(this,'${id}')" onblur="setTimeout(()=>closeMatDrop('${id}'),200)"
+        style="width:100%;padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:12px;background:var(--inp)"/>
+      <input type="hidden" class="pu-mat"/>
+      <div class="mat-drop" id="drop-${id}"></div>
+    </div>
+    <input class="pu-q" type="number" placeholder="Qty" min="1"/>
+    <button class="btn btn-e btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  $("puList").appendChild(d);
+}
+function matSearch(inp,rowId){
+  const q=inp.value.toLowerCase();
+  const drop=$("drop-"+rowId);
+  const matches=WH.filter(w=>w.Material&&w.Material.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){drop.classList.remove("open");return}
+  drop.innerHTML=matches.map(w=>`<div class="mat-opt" onmousedown="pickMat('${rowId}','${w.Material}','${w.TotalStock} ${w.Unit}')">${w.Material} — <b>${w.TotalStock} ${w.Unit}</b></div>`).join("");
+  drop.classList.add("open");
+}
+function pickMat(rowId,mat,info){
+  const row=$(rowId);
+  row.querySelector(".pu-mat-inp").value=`${mat} (${info})`;
+  row.querySelector(".pu-mat").value=mat;
+  closeMatDrop(rowId);
+}
+function closeMatDrop(rowId){
+  const drop=$("drop-"+rowId); if(drop) drop.classList.remove("open");
+}
+
+// Collab tags
+function addCollab(){
+  const sel=document.getElementById("colSel");
+  const name=sel.options[sel.selectedIndex]?.text; const val=sel.value;
+  if(!val||!name) return;
+  if(!collabs.includes(name)&&name!==gv("wo-mech")){collabs.push(name);renderTags();}
+  sel.value="";
+}
+function renderTags(){
+  const box=$("tagBox");
+  box.querySelectorAll(".tag").forEach(t=>t.remove());
+  const sel=document.getElementById("colSel");
+  collabs.forEach((c,i)=>{
+    const t=document.createElement("div"); t.className="tag";
+    t.innerHTML=`${c}<button onclick="removeTag(${i})">×</button>`;
+    box.insertBefore(t,sel);
+  });
+  const myName=gv("wo-mech");
+  sel.innerHTML=`<option value="">+ Add mechanic…</option>`+
+    MECHS.filter(m=>m.fullName!==myName&&!collabs.includes(m.fullName))
+         .map(m=>`<option value="${m.username}">${m.fullName}</option>`).join("");
+}
+function removeTag(i){collabs.splice(i,1);renderTags();}
+
+// ══════════════════════════════════════════════════════════════
+// PARTS
+async function loadPT(){
+  PT=await GET("getParts"); if(!Array.isArray(PT)) PT=[];
+  const can=S?.role!=="mechanic";
+  const tb=$("ptTb");
+  if(!PT.length){tb.innerHTML=er(6,"No spare parts");return}
+  tb.innerHTML=PT.map(p=>`
+    <tr id="pt-r-${p.PartID}">
+      <td><b>${p.Name}</b><br><small style="color:var(--sub)">${p.PartID}</small></td>
+      <td>${p.PartNo||"—"}</td><td>${en(p.EquipmentID)}</td><td>${p.Unit}</td><td>${p.MinStock}</td>
+      <td class="acts">
+        <button class="btn btn-p btn-sm" onclick="togExp('pt','${p.PartID}')">🔍 Detail</button>
+        ${can?`<button class="btn btn-w btn-sm" onclick='ptEdit(${J(p)})'>✏️</button>
+        <button class="btn btn-e btn-sm" onclick="askDel('deletePart','${p.PartID}','${p.Name}')">🗑️</button>`:""}
+      </td>
+    </tr>
+    <tr id="pt-x-${p.PartID}" style="display:none" class="exp-row">
+      <td colspan="6"><div class="exp-box">
+        <div class="exp-grid">
+          <div class="exp-f"><label>Part No.</label><p>${p.PartNo||"—"}</p></div>
+          <div class="exp-f"><label>Unit</label><p>${p.Unit}</p></div>
+          <div class="exp-f"><label>Min Stock</label><p>${p.MinStock}</p></div>
+          <div class="exp-f"><label>Equipment</label><p>${en(p.EquipmentID)}</p></div>
+          <div class="exp-f full"><label>Specifications</label><p>${p.Specs||"—"}</p></div>
+        </div>
+        <span class="slbl">📷 Part Photos</span>
+        <div class="img-row">${imgT(p.ImgFront,"Front")}${imgT(p.ImgSide,"Side")}${imgT(p.ImgIso,"Isometric")}</div>
+      </div></td>
+    </tr>`).join("");
+  popSel();
+}
+
+function ptEdit(p){
+  editId=p.PartID;
+  ["pt-id","pt-name","pt-no","pt-specs"].forEach((id,i)=>sv(id,[p.PartID,p.Name,p.PartNo,p.Specs][i]));
+  sv("pt-eq",p.EquipmentID); sv("pt-unt",p.Unit); sv("pt-min",p.MinStock);
+  photos.pt={front:{url:p.ImgFront||""},side:{url:p.ImgSide||""},iso:{url:p.ImgIso||""}};
+  renderPhotoSlots("ptPhotoBox","pt",["Front","Side","Isometric"]);
+  $("mPtT").textContent="✏️ Edit Part"; om("mPt");
+}
+
+async function submitPt(){
+  const d={name:gv("pt-name"),partNo:gv("pt-no"),equipmentId:gv("pt-eq"),unit:gv("pt-unt"),minStock:gv("pt-min"),specs:gv("pt-specs")};
+  if(!d.name){toast("Part name required","warn");return}
+  toast("Saving…","info");
+  d.imgFront=await uploadSlot(photos.pt,"front")||"";
+  d.imgSide =await uploadSlot(photos.pt,"side")||"";
+  d.imgIso  =await uploadSlot(photos.pt,"iso")||"";
+  const r=editId?await POST("editPart",{...d,id:editId}):await POST("addPart",d);
+  if(r.success){toast(editId?"✅ Updated!":"✅ Added!"); cm("mPt"); photos.pt={}; loadPT();}
+  else toast("Error: "+r.error,"err");
+}
+
+// ══════════════════════════════════════════════════════════════
+// WAREHOUSE (read-only mirror)
+async function loadWH(){
+  WH=await GET("getWarehouse"); if(!Array.isArray(WH)) WH=[];
+  const tb=$("whTb");
+  const errRow=WH.find(w=>w._error);
+  if(errRow){tb.innerHTML=`<tr><td colspan="4" class="empty">⚠️ ${errRow._error}</td></tr>`;return}
+  if(!WH.length){tb.innerHTML=er(4,"No warehouse data");return}
+  tb.innerHTML=WH.map(w=>{
+    const stock=w.TotalStock!==undefined?w.TotalStock:"—";
+    const low=Number(w.TotalStock)<=5;
+    return`<tr>
+      <td><b>${w.Material||"—"}</b></td>
+      <td>${w.Unit||"—"}</td>
+      <td><b style="color:${low?"var(--err)":"var(--ok)"}">${stock}</b></td>
+      <td>${low?'<span class="b br">⚠ Low</span>':'<span class="b bg">✅ OK</span>'}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════════════════
+// HISTORY
+async function loadHist(){
+  const eq=gv("histEqF");
+  const data=await GET("getHistory",eq?{equipmentId:eq}:{});
+  const opts=EQ.map(e=>`<option value="${e.EquipmentID}">${e.Name}</option>`).join("");
+  $("histEqF").innerHTML=`<option value="">All Equipment</option>${opts}`;
+  const tb=$("hiTb");
+  if(!Array.isArray(data)||!data.length){tb.innerHTML=er(6,"No history");return}
+  tb.innerHTML=[...data].reverse().map(h=>`<tr>
+    <td>${fd(h.Date)}</td><td>${en(h.EquipmentID)}</td><td>${h.WOID}</td>
+    <td>${h.Mechanic}</td><td>${h.Activity}</td>
+    <td style="max-width:180px;white-space:normal">${h.Description||"—"}</td>
+  </tr>`).join("");
+}
+
+// ══════════════════════════════════════════════════════════════
+// USERS
+async function loadUs(){
+  const r=await POST("getUsers",{}); if(!Array.isArray(r)) return;
+  const tb=$("usTb");
+  if(!r.length){tb.innerHTML=er(6,"No users");return}
+  tb.innerHTML=r.map(u=>`<tr>
+    <td>${u.Photo?`<img src="${fixDriveUrl(u.Photo)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--bdr);cursor:pointer" onclick="lb('${fixDriveUrl(u.Photo)}','${u.FullName}')" onerror="this.outerHTML='<div style=\'width:38px;height:38px;border-radius:50%;background:var(--a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px\'>${(u.FullName||u.Username).charAt(0).toUpperCase()}</div>'"  />`:
+      `<div style="width:38px;height:38px;border-radius:50%;background:var(--a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px">${(u.FullName||u.Username).charAt(0).toUpperCase()}</div>`}</td>
+    <td><b>${u.Username}</b></td><td>${u.FullName}</td>
+    <td>${rb(u.Role)}</td>
+    <td>${(u.Active===true||String(u.Active).toUpperCase()==="TRUE")?'<span class="b bg">✅</span>':'<span class="b br">❌</span>'}</td>
+    <td class="acts">
+      <button class="btn btn-w btn-sm" onclick='usEdit(${J(u)})'>✏️</button>
+      <button class="btn btn-e btn-sm" onclick="askDel('deleteUser','${u.Username}','${u.FullName}')">🗑️</button>
+    </td>
+  </tr>`).join("");
+}
+
+function usEdit(u){
+  editId=u.Username; sv("u-un",u.Username); sv("u-fn",u.FullName);
+  sv("u-rl",u.Role); sv("u-pw",""); sv("u-photo",u.Photo||"");
+  photos.user={front:{url:u.Photo||""}};
+  renderPhotoSlots("userPhotoBox","user",["Profile Photo"]);
+  $("u-un").disabled=true; $("mUsT").textContent="✏️ Edit User"; om("mUs");
+}
+
+async function submitUs(){
+  const d={username:gv("u-un"),password:gv("u-pw"),fullName:gv("u-fn"),role:gv("u-rl"),active:gv("u-ac")==="true"};
+  if(!d.username){toast("Username required","warn");return}
+  toast("Saving…","info");
+  d.photo=await uploadSlot(photos.user,"front")||gv("u-photo");
+  const r=editId?await POST("editUser",{...d,username:editId}):await POST("addUser",d);
+  if(r.success){toast(editId?"✅ Updated!":"✅ Added!"); cm("mUs"); photos.user={}; loadUs();}
+  else toast("Error: "+r.error,"err");
+}
+
+// ══════════════════════════════════════════════════════════════
+// PHOTO SYSTEM — replace not add
+// Renders one slot per label. Shows existing photo + replace/remove buttons.
+function renderPhotoSlots(containerId, ctx, labels){
+  const container=$(containerId); if(!container) return;
+  const keys=["front","side","iso"];
+  const slotDefs=labels.map((l,i)=>({key:keys[i]||`img${i}`,label:l}));
+  container.innerHTML=slotDefs.map(s=>`
+    <div class="photo-slot" id="slot-${ctx}-${s.key}">
+      <span class="photo-slot-label">${s.label}</span>
+      <div class="photo-preview" id="prev-${ctx}-${s.key}"></div>
+      <div class="ph-actions">
+        <label class="ph-btn" style="cursor:pointer">
+          📷 ${(photos[ctx]&&photos[ctx][s.key]&&photos[ctx][s.key].url)?"Replace":"Camera / Upload"}
+          <input type="file" accept="image/*" capture="environment" class="cam-file"
+            onchange="handleSlotFile(this,'${ctx}','${s.key}')"/>
+        </label>
+        <button class="ph-btn remove" onclick="removeSlot('${ctx}','${s.key}')" style="display:${(photos[ctx]&&photos[ctx][s.key]&&photos[ctx][s.key].url)?"inline-flex":"none"}">🗑 Remove</button>
+      </div>
+    </div>`).join("");
+  // Render existing previews
+  slotDefs.forEach(s=>refreshSlotPrev(ctx,s.key,s.label));
+}
+
+function handleSlotFile(input,ctx,key){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const dataUrl=e.target.result;
+    const oldFileId=(photos[ctx]&&photos[ctx][key])?extractFileId(photos[ctx][key].url):null;
+    if(!photos[ctx]) photos[ctx]={};
+    photos[ctx][key]={base64:dataUrl.split(",")[1],mimeType:file.type,filename:`${ctx}_${key}_${Date.now()}.jpg`,url:dataUrl,_new:true,_oldFileId:oldFileId};
+    const slot=$(`slot-${ctx}-${key}`);
+    if(slot){ const lbl=slot.querySelector(".photo-slot-label")?.textContent||key; refreshSlotPrev(ctx,key,lbl); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function refreshSlotPrev(ctx,key,label){
+  const prevEl=$(`prev-${ctx}-${key}`); if(!prevEl) return;
+  const ph=(photos[ctx]||{})[key];
+  const url=ph?ph.url:"";
+  const slotEl=$(`slot-${ctx}-${key}`);
+  if(url&&url!=="undefined"&&url!=="null"&&url!==""){
+    const fixedUrl=fixDriveUrl(url);
+    prevEl.innerHTML=`<img src="${fixedUrl}" style="width:70px;height:56px;object-fit:cover;border-radius:6px;border:2px solid var(--bdr);cursor:pointer" onclick="lb('${fixedUrl}','${label}')" onerror="this.style.display='none'"/>`;
+    if(slotEl){
+      const rmBtn=slotEl.querySelector(".ph-btn.remove"); if(rmBtn) rmBtn.style.display="inline-flex";
+      const upBtn=slotEl.querySelector("label.ph-btn"); if(upBtn) upBtn.childNodes[0].textContent="📷 Replace ";
+    }
+  } else {
+    prevEl.innerHTML="";
+    if(slotEl){
+      const rmBtn=slotEl.querySelector(".ph-btn.remove"); if(rmBtn) rmBtn.style.display="none";
+      const upBtn=slotEl.querySelector("label.ph-btn"); if(upBtn) upBtn.childNodes[0].textContent="📷 Camera / Upload ";
+    }
+  }
+}
+
+function removeSlot(ctx,key){
+  const ph=(photos[ctx]||{})[key];
+  if(ph&&ph.url&&!ph._new){
+    const fid=extractFileId(ph.url);
+    if(fid) POST("deletePhoto",{fileId:fid}); // fire and forget
+  }
+  if(photos[ctx]) photos[ctx][key]={url:""};
+  refreshSlotPrev(ctx,key,"");
+}
+
+function extractFileId(url){
+  if(!url) return null;
+  let m=url.match(/\/d\/([a-zA-Z0-9_-]{20,})/); if(m) return m[1];
+  m=url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/); if(m) return m[1];
+  return null;
+}
+
+async function uploadSlot(ctxPhotos, key){
+  if(!ctxPhotos) return null;
+  const ph=ctxPhotos[key];
+  if(!ph) return null;
+  if(ph.url===""||ph.url===null) return ""; // cleared
+  if(!ph._new) return fixDriveUrl(ph.url)||""; // keep existing
+  // Delete old file if replacing
+  if(ph._oldFileId) await POST("deletePhoto",{fileId:ph._oldFileId});
+  const r=await POST("uploadPhoto",{base64:ph.base64,mimeType:ph.mimeType,filename:ph.filename});
+  if(r.success) return r.url;
+  toast("Upload failed: "+r.error,"err");
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// REPORT
+function popRptSel(){
+  const opts=EQ.map(e=>`<option value="${e.EquipmentID}">${e.Name}</option>`).join("");
+  sv2("rptEq",`<option value="">All</option>${opts}`);
+}
+
+function genReport(){
+  const type=gv("rptType"),from=gv("rptFrom"),to=gv("rptTo"),eqF=gv("rptEq"),stF=gv("rptSt");
+  const ok=d=>{ if(!d)return true; const dt=new Date(d);
+    if(from&&dt<new Date(from))return false;
+    if(to&&dt>new Date(to+"T23:59:59"))return false; return true; };
+  if(type==="wo"){
+    rptCols=["WOID","Date","Equipment","Mechanic","Collaborators","ActivityType","Status","Priority","StartTime","DoneTime","NeededParts","ConfirmedBy"];
+    rptData=WO.filter(w=>(stF?w.Status===stF:true)&&(eqF?w.EquipmentID===eqF:true)&&ok(w.Date))
+              .map(w=>({...w,Equipment:en(w.EquipmentID)}));
+  }else if(type==="eq"){
+    rptCols=["EquipmentID","Name","Type","Brand","Model","SerialNo","Year","Status","Location","Specs"];
+    rptData=EQ.filter(e=>stF?e.Status===stF:true);
+  }else if(type==="hist"){
+    rptCols=["Date","Equipment","WOID","Mechanic","Activity","Status","Description"];
+    rptData=WO.filter(w=>(eqF?w.EquipmentID===eqF:true)&&ok(w.Date))
+              .map(w=>({Date:fd(w.Date),Equipment:en(w.EquipmentID),WOID:w.WOID,Mechanic:w.Mechanic,Activity:w.ActivityType,Status:w.Status,Description:w.Description}));
+  }else{
+    rptCols=["Material","Unit","TotalStock"];
+    rptData=WH.filter(w=>!w._error);
+  }
+  if(!rptData.length){$("rptPreview").innerHTML=`<div class="empty">No data matches filters</div>`;return}
+  let h=`<div class="tw"><table><thead><tr>${rptCols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>`;
+  h+=rptData.map(r=>`<tr>${rptCols.map(c=>`<td>${r[c]||"—"}</td>`).join("")}</tr>`).join("");
+  h+=`</tbody></table></div><p style="font-size:11px;color:var(--sub);margin-top:6px">${rptData.length} records</p>`;
+  $("rptPreview").innerHTML=h;
+}
+function exportPDF(){
+  if(!rptData.length){toast("Preview first","warn");return}
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"landscape"});
+  doc.text("Equipment Inventory Report",14,15);
+  doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString()}`,14,22);
+  doc.autoTable({head:[rptCols],body:rptData.map(r=>rptCols.map(c=>String(r[c]||""))),startY:28,styles:{fontSize:8},headStyles:{fillColor:[30,58,95]}});
+  doc.save(`report_${gv("rptType")}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+function exportExcel(){
+  if(!rptData.length){toast("Preview first","warn");return}
+  const ws=XLSX.utils.json_to_sheet(rptData.map(r=>{const o={};rptCols.forEach(c=>o[c]=r[c]||"");return o}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Report");
+  XLSX.writeFile(wb,`report_${gv("rptType")}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPAND ROWS
+function togExp(pre,id){
+  const row=$(`${pre}-x-${id}`); if(!row) return;
+  const open=row.style.display!=="none";
+  $$(".exp-row").forEach(r=>r.style.display="none");
+  if(!open) row.style.display="table-row";
+}
+
+// DELETE
+function askDel(action,id,label){
+  delTgt={action,id};
+  $("delMsg").textContent=`Delete "${label}"? This cannot be undone.`;
+  om("mDel");
+}
+async function cfmDel(){
+  const r=await POST(delTgt.action,{id:delTgt.id});
+  cm("mDel");
+  if(r.success){toast("🗑️ Deleted!"); await loadAll();}
+  else toast("Error: "+r.error,"err");
+  delTgt=null;
+}
+
+// BOTTOM NAV
+function onAdd(){
+  editId=null; collabs=[]; photos={eq:{},pt:{},woparts:{},user:{}};
+  const map={
+    equipment:()=>{ ["eq-id","eq-name","eq-brand","eq-model","eq-serial","eq-year","eq-loc","eq-specs"].forEach(id=>sv(id,""));
+      renderPhotoSlots("eqPhotoBox","eq",["Front","Side","Isometric"]); $("mEqT").textContent="➕ Add Equipment"; om("mEq"); },
+    workorder:()=>{ ["wo-id","wo-mech","wo-desc","wo-parts","wo-partsDesc"].forEach(id=>sv(id,""));
+      sv("wo-mech",S?.fullName||S?.username||""); collabs=[]; renderTags();
+      $("puList").innerHTML=""; $("partsSection").style.display="block";
+      renderPhotoSlots("woPartsPhotoBox","woparts",["Parts Photo"]);
+      $("mWOT").textContent="➕ New Work Order"; om("mWO"); },
+    parts:()=>{ ["pt-id","pt-name","pt-no","pt-specs"].forEach(id=>sv(id,""));
+      renderPhotoSlots("ptPhotoBox","pt",["Front","Side","Isometric"]); $("mPtT").textContent="➕ Add Part"; om("mPt"); },
+    users:()=>{ if(S?.role!=="manager"){toast("Managers only","warn");return}
+      ["u-un","u-pw","u-fn"].forEach(id=>sv(id,"")); $("u-un").disabled=false; sv("u-photo","");
+      renderPhotoSlots("userPhotoBox","user",["Profile Photo"]); $("mUsT").textContent="➕ Add User"; om("mUs"); },
+  };
+  if(map[curPage]) map[curPage]();
+  else toast("Select Equipment, Work Orders, Parts or Users tab","warn");
+}
+function onEdit(){toast("Tap ✏️ on a row to edit","warn")}
+function onDel(){toast("Tap 🗑️ on a row to delete","warn")}
+async function onRefresh(){toast("🔄 Refreshing…","info"); await loadAll(); toast("✅ Refreshed!")}
+
+// MODALS
+const om=id=>$(id).classList.add("open");
+const cm=id=>{$(id).classList.remove("open");editId=null;if(id==="mUs")$("u-un").disabled=false;};
+$$(".ov").forEach(el=>el.addEventListener("click",e=>{if(e.target===el)cm(el.id)}));
+
+// POPULATE SELECTS
+function popSel(){
+  const opts=EQ.map(e=>`<option value="${e.EquipmentID}">${e.Name}</option>`).join("");
+  sv2("wo-eq",`<option value="">Select Equipment…</option>${opts}`);
+  sv2("pt-eq",`<option value="General">General / All</option>${opts}`);
+  const hf=$("histEqF"); if(hf) hf.innerHTML=`<option value="">All Equipment</option>${opts}`;
+  popRptSel();
+}
+</script>
+</body>
+</html>

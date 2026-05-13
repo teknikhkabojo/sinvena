@@ -5,7 +5,7 @@
 const SHEET_ID      = "1iWTa93i4gWDZobBbY9DFga1EzR6vF-Ak-mHkoZmeH8o";
 const GDRIVE_FOLDER = "1ajqJv_QDWi03OuLGK5hoh-4nsSjzwR0H";
 const WAREHOUSE_EXT = "1XWaC-OaYFjwu1ZuqH_X6wabYMQdbVplBQJQw1M2rqHs";
-// GROQ_KEY is in config.gs (not tracked by git)
+// GROQ_KEY is in config.gs
 const WAREHOUSE_TAB = "Mirroring data";
 
 const ss = SpreadsheetApp.openById(SHEET_ID);
