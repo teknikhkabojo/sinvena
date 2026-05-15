@@ -785,8 +785,9 @@ let photos={eq:{},pt:{},woparts:{},user:{}};
 
 // ══════════════════════════════════════════════════════════════
 // API
-const GET  = async(a,p={}) => { try{ return await(await fetch(`${API}?${new URLSearchParams({action:a,...p})}`)).json(); }catch(e){return{error:e.message}} };
-const POST = async(a,d)    => { try{ return await(await fetch(API,{method:"POST",body:JSON.stringify({action:a,data:d})})).json(); }catch(e){return{error:e.message}} };
+const TO = (ms=15000) => { const c=new AbortController(); setTimeout(()=>c.abort(),ms); return c; };
+const GET  = async(a,p={}) => { try{ const r=await fetch(`${API}?${new URLSearchParams({action:a,...p})}`,{signal:TO().signal}); return await r.json() }catch(e){return{error:"Timeout / Network error"}} };
+const POST = async(a,d)    => { try{ const r=await fetch(API,{method:"POST",body:JSON.stringify({action:a,data:d}),signal:TO(20000).signal}); return await r.json() }catch(e){return{error:"Timeout / Network error"}} };
 const AI   = async(prompt,mode,context) => POST("ai",{prompt,mode,context});
 
 // ══════════════════════════════════════════════════════════════
