@@ -314,7 +314,7 @@ tbody tr:hover{background:var(--alight)}
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbxpuE0ZGy5uYnrqr8kv3-cRwUccKZtnUuJCPUgNVddq0fNZfoUyg-RAQdZ0FoYXy1Qr/exec";
+const API = "https://script.google.com/macros/s/AKfycbz-q801wHcabpE6jDNJ-lPKigt78k-aMBcTgaWqi8rr-1I89AD4mEdrdP0Jcmb0I89G/exec";
 const GET = async(a,p) => { try{ return await(await fetch(`${API}?${new URLSearchParams({action:a,...p})}`)).json() }catch(e){return{error:e.message}} };
 const POST = async(a,d) => { try{ return await(await fetch(API,{method:"POST",body:JSON.stringify({action:a,data:d})})).json() }catch(e){return{error:e.message}} };
 
